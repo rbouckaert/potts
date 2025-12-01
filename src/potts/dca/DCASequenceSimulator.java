@@ -110,7 +110,7 @@ public class DCASequenceSimulator extends Runnable {
 		}
 		
 		// sample root sequence
-		sampleRootSequence(alignment[tree.getRoot().getNr()], dca);
+		sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount);
 		traverseDown(alignment, dca, tree.getRoot(), matrices);
 		for (int i = 0; i < resampleCount; i++) {
 			reSample(alignment, dca, tree.getRoot(), matrices);
@@ -198,7 +198,7 @@ public class DCASequenceSimulator extends Runnable {
 	}
 	
 	
-	private void sampleRootSequence(int[] seq, DCA dca) {
+	static void sampleRootSequence(int[] seq, DCA dca, int rootStepCount) {
 		for (int step = 0; step < rootStepCount; step++) {
             // Try to mutate every site once (Standard sweep)
             for (int i = 0; i < dca.siteCount; i++) {
@@ -227,7 +227,7 @@ public class DCASequenceSimulator extends Runnable {
 	 * No parents or children.
      * deltaH = (h_new - h_old) + Sum_neighbors(J_new_neighbor - J_old_neighbor)
      */
-    private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState) {
+    static double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState) {
         // 1. Change in Field Energy
         double delta = dca.h[i][newState] - dca.h[i][oldState];
 
@@ -285,7 +285,7 @@ public class DCASequenceSimulator extends Runnable {
         return delta;
     }    
     
-	private void toFasta(int[][] alignment, String path, Tree tree, DataType dataType) throws FileNotFoundException {
+	static public void toFasta(int[][] alignment, String path, Tree tree, DataType dataType) throws FileNotFoundException {
 		Log.warning("Output written to " + path);
 		PrintStream out = new PrintStream(path);
 		Node [] nodes = tree.getNodesAsArray();
