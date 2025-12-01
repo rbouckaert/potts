@@ -26,11 +26,19 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
 	final public Input<File> dcaInput = new Input<>("dca", "DCA json file previously trained on an alignment", Validate.REQUIRED);
 	final public Input<Double> temperatureInput = new Input<>("temperature", "temperature balancing the effect of Potts model Pt and substitution model Ps. "
 			+ "Mutations are chosen proportional to Pt^1/t * Ps (thus 1/t", 1.0);
+	final public Input<SequenceState> sequencesInput = new Input<>("sequences", "statenode representing internal node sequences", Validate.REQUIRED);
 
-	int [][][] sequences;
 	int siteCount;
 	int stateCount;
+	int nodeCount;
+	SequenceState sequences;
 	
+	double [][] substModelContribution;
+	double [][] dcaModelContribution;
+	
+	int [] currentSubstModelIndex, currentDCAModelIndex;
+	int [] storedSubstModelIndex, storedDCAModelIndex;
+
     /**
      * BEASTObject associated with inputs. Since none of the inputs are StateNodes, it
      * is safe to link to them only once, during initAndValidate.
@@ -100,7 +108,7 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
     	}
         alignment = (Alignment) dataInput.get();
 
-        int nodeCount = treeInput.get().getNodeCount();
+        nodeCount = treeInput.get().getNodeCount();
         if (!(siteModelInput.get() instanceof SiteModel.Base)) {
         	throw new IllegalArgumentException("siteModel input should be of type SiteModel.Base");
         }
@@ -122,7 +130,9 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
         m_siteModel.setPropInvariantIsCategory(false);
 
         siteCount = alignment.getSiteCount();
-        sequences = new int[2][nodeCount][siteCount];
+        
+        sequences = sequencesInput.get();
+        sequences.init(nodeCount, siteCount);
 
         setStates(treeInput.get().getRoot(), siteCount);
         hasDirt = Tree.IS_FILTHY;
@@ -150,6 +160,13 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
 			e.printStackTrace();
 		}
 
+    	substModelContribution = new double[2][nodeCount];
+    	dcaModelContribution = new double[2][nodeCount];
+
+    	currentSubstModelIndex = new int[nodeCount];
+    	currentDCAModelIndex = new int[nodeCount];
+    	storedSubstModelIndex = new int[nodeCount];
+    	storedDCAModelIndex = new int[nodeCount];
     }
 
     
@@ -169,15 +186,15 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
                 else
                     states[i] = code; // Causes ambiguous states to be ignored.
             }
-            System.arraycopy(states, 0, sequences[0][taxonIndex], 0, siteCount);
+            sequences.setSequence(taxonIndex, states);
         } else {
             setStates(node.getLeft(), siteCount);
             setStates(node.getRight(), siteCount);
 
             // internal nodes get random mixture of left and right sequences
-        	int [] currentSeq = sequences[0][node.getNr()];
-        	int [] leftSeq = sequences[0][node.getLeft().getNr()];
-        	int [] righttSeq = sequences[0][node.getRight().getNr()];
+        	int [] currentSeq = sequences.get(node.getNr());
+        	int [] leftSeq = sequences.get(node.getLeft().getNr());
+        	int [] righttSeq = sequences.get(node.getRight().getNr());
         	for (int i = 0; i < siteCount; i++) {
         		currentSeq[i] = Randomizer.nextBoolean() ? leftSeq[i] : righttSeq[i];
         	}
@@ -209,6 +226,7 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
    
 	double temperatureFactor;
 
+	
    @Override
    public double calculateLogP() {
        logP = 0;
@@ -217,16 +235,22 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
        for (int i = tree.getLeafNodeCount(); i < tree.getNodeCount(); i++) {
     	   Node node = tree.getNode(i);
     	   if (!node.isRoot()) {
-    		   logP += substmodelContribution(node); 
+    		   logP -= substModelContribution[currentSubstModelIndex[i]][i];
+    		   currentSubstModelIndex[i] = 1-currentSubstModelIndex[i];
+    		   substModelContribution[currentSubstModelIndex[i]][i] = substmodelContribution(node);
+    		   logP += substModelContribution[currentSubstModelIndex[i]][i];
     	   }
-		   logP += dcaModelContribution(node); 
+		   logP -= dcaModelContribution[currentDCAModelIndex[i]][i];
+		   currentDCAModelIndex[i] = 1 - 	currentDCAModelIndex[i];
+		   dcaModelContribution[currentDCAModelIndex[i]][i] = dcaModelContribution(node); 
+		   logP += dcaModelContribution[currentDCAModelIndex[i]][i];
        }
        return logP;
    }
    
    private double dcaModelContribution(Node node) {
 	   double logP = 0;
-       int [] seq = sequences[0][node.getNr()];
+       int [] seq = sequences.get(node.getNr());
        double [][] h = dca.getH();
        double [][][][] J = dca.getJ();
        for (int i = 0; i < siteCount; i++) {
@@ -250,13 +274,32 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
        }
        
        double logP = 0;
-       int [] seq = sequences[0][node.getNr()];
-       int [] parentSeq = sequences[0][node.getParent().getNr()];
+       int [] seq = sequences.get(node.getNr());
+       int [] parentSeq = sequences.get(node.getParent().getNr());
        for (int i = 0; i < siteCount; i++) {
     	   logP += logProbabilities[parentSeq[i] * stateCount + seq[i]];
        }
 	   return logP;
    }
 
+   @Override
+   public void store() {
+	   System.arraycopy(currentDCAModelIndex, 0, storedDCAModelIndex, 0, nodeCount);
+	   System.arraycopy(currentSubstModelIndex, 0, storedSubstModelIndex, 0, nodeCount);
+	   super.store();
+   }
+   
+   @Override
+   public void restore() {
+	   	int [] tmp = currentDCAModelIndex;
+	   	currentDCAModelIndex = storedDCAModelIndex;
+	   	storedDCAModelIndex = tmp;
+	   	
+	   	tmp = currentSubstModelIndex;
+	   	currentSubstModelIndex = storedSubstModelIndex;
+	   	storedSubstModelIndex = tmp;
+	   	
+		super.restore();
+	}
 
 }
