@@ -6,13 +6,19 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 
 @Description("Base class for representing a direct-coupling analysis (DCA)")
-public class DCA {
+public class DCA extends BEASTObject {
     protected int stateCount;    // Number of states (e.g., 21 for Amino Acids)
 	protected int siteCount;     // Length of sequence
     protected int sequenceCount; // Number of sequences in MSA
+
+    
+	@Override
+	public void initAndValidate() {
+	}
 
     public int getStateCount() {
 		return stateCount;

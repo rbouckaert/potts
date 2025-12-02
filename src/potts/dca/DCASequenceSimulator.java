@@ -110,7 +110,7 @@ public class DCASequenceSimulator extends Runnable {
 		}
 		
 		// sample root sequence
-		sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount);
+		sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount, dca.stateCount);
 		traverseDown(alignment, dca, tree.getRoot(), matrices);
 		for (int i = 0; i < resampleCount; i++) {
 			reSample(alignment, dca, tree.getRoot(), matrices);
@@ -198,12 +198,12 @@ public class DCASequenceSimulator extends Runnable {
 	}
 	
 	
-	static void sampleRootSequence(int[] seq, DCA dca, int rootStepCount) {
+	static void sampleRootSequence(int[] seq, DCA dca, int rootStepCount, int stateCount) {
 		for (int step = 0; step < rootStepCount; step++) {
             // Try to mutate every site once (Standard sweep)
             for (int i = 0; i < dca.siteCount; i++) {
                 int oldState = seq[i];
-                int newState = Randomizer.nextInt(dca.stateCount);
+                int newState = Randomizer.nextInt(stateCount);
                 
                 if (oldState == newState) continue;
 
@@ -227,7 +227,7 @@ public class DCASequenceSimulator extends Runnable {
 	 * No parents or children.
      * deltaH = (h_new - h_old) + Sum_neighbors(J_new_neighbor - J_old_neighbor)
      */
-    static double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState) {
+    public static double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState) {
         // 1. Change in Field Energy
         double delta = dca.h[i][newState] - dca.h[i][oldState];
 

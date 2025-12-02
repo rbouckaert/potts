@@ -15,13 +15,12 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.inference.Distribution;
 import beast.base.inference.State;
 import beast.base.inference.parameter.IntegerParameter;
-import beastfx.app.inputeditor.BeautiDoc;
 import potts.dca.DCA;
 
 @Description("Contribution of Potts model for one sequence")
 public class PottsSequenceLikelihood extends Distribution {
 
-	final public Input<File> dcaInput = new Input<>("dca", "DCA json file previously trained on an alignment",
+	final public Input<DCA> dcaInput = new Input<>("dca", "DCA json file previously trained on an alignment",
 			Validate.REQUIRED);
 
 	final public Input<IntegerParameter> sequenceInput = new Input<>("sequence",
@@ -40,21 +39,15 @@ public class PottsSequenceLikelihood extends Distribution {
 		siteCount = sequence.getDimension();
 		stateCount = dataInput.get().getMaxStateCount();
 
-		try {
-			dca = new DCA();
-			String json = BeautiDoc.load(dcaInput.get());
-			dca.fromJSON(new JSONObject(json));
+		dca = dcaInput.get();
 
-			if (dca.getSiteCount() != siteCount) {
-				throw new IllegalArgumentException("Site count of DCA (" + dca.getSiteCount() + ") and alignment ("
-						+ siteCount + ") should match");
-			}
-			if (dca.getStateCount() != stateCount + 1) {
-				throw new IllegalArgumentException("State count of DCA (" + dca.getStateCount() + ") and alignment ("
-						+ stateCount + ") should match");
-			}
-		} catch (IOException | JSONException e) {
-			e.printStackTrace();
+		if (dca.getSiteCount() != siteCount) {
+			throw new IllegalArgumentException("Site count of DCA (" + dca.getSiteCount() + ") and alignment ("
+					+ siteCount + ") should match");
+		}
+		if (dca.getStateCount() != stateCount + 1) {
+			throw new IllegalArgumentException("State count of DCA (" + dca.getStateCount() + ") and alignment ("
+					+ stateCount + ") should match");
 		}
 
 		super.initAndValidate();

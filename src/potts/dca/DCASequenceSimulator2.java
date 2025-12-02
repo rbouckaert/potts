@@ -104,7 +104,7 @@ public class DCASequenceSimulator2 extends Runnable {
 		}
 		
 		// sample root sequence
-		DCASequenceSimulator.sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount);
+		DCASequenceSimulator.sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount, dca.stateCount);
 		traverseDown(alignment, dca, tree.getRoot(), rateMatrix);
 		
 		return alignment;

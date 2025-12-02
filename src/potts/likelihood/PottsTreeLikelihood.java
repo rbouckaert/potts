@@ -1,11 +1,6 @@
 package potts.likelihood;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import beast.base.core.Input;
 import beast.base.core.Input.Validate;
@@ -19,11 +14,10 @@ import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.util.Randomizer;
-import beastfx.app.inputeditor.BeautiDoc;
 import potts.dca.DCA;
 
 public class PottsTreeLikelihood extends GenericTreeLikelihood {
-	final public Input<File> dcaInput = new Input<>("dca", "DCA json file previously trained on an alignment", Validate.REQUIRED);
+	final public Input<DCA> dcaInput = new Input<>("dca", "DCA json file previously trained on an alignment", Validate.REQUIRED);
 	final public Input<Double> temperatureInput = new Input<>("temperature", "temperature balancing the effect of Potts model Pt and substitution model Ps. "
 			+ "Mutations are chosen proportional to Pt^1/t * Ps (thus 1/t", 1.0);
 	final public Input<SequenceState> sequencesInput = new Input<>("sequences", "statenode representing internal node sequences", Validate.REQUIRED);
@@ -145,19 +139,13 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
             useAscertainedSitePatterns = true;
         }
         
-        try {
-        	dca = new DCA();
-			String json = BeautiDoc.load(dcaInput.get());
-			dca.fromJSON(new JSONObject(json));
-			
-			if (dca.getSiteCount() != siteCount) {
-				throw new IllegalArgumentException ("Site count of DCA (" + dca.getSiteCount() + ") and alignment (" + siteCount + ") should match");
-			}
-			if (dca.getStateCount() != stateCount+1) {
-				throw new IllegalArgumentException ("State count of DCA (" + dca.getStateCount() + ") and alignment (" + stateCount + ") should match");
-			}
-        } catch (IOException | JSONException  e) {
-			e.printStackTrace();
+    	dca = dcaInput.get();
+		
+		if (dca.getSiteCount() != siteCount) {
+			throw new IllegalArgumentException ("Site count of DCA (" + dca.getSiteCount() + ") and alignment (" + siteCount + ") should match");
+		}
+		if (dca.getStateCount() != stateCount+1) {
+			throw new IllegalArgumentException ("State count of DCA (" + dca.getStateCount() + ") and alignment (" + stateCount + ") should match");
 		}
 
     	substModelContribution = new double[2][nodeCount];

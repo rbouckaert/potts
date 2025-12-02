@@ -345,7 +345,7 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 	@Override
 	protected boolean requiresRecalculation() {
 		boolean isDirty = super.requiresRecalculation();
-		if (rootFrequenciesInput.get().isDirtyCalculation()) {
+		if (rootFrequenciesSequenceInput.get().isDirtyCalculation()) {
 			initRootFrequencies();
 			isDirty = true;
 		}

@@ -35,11 +35,13 @@ public class RootDCASequenceSimulator extends Runnable {
 
 	final public Input<Integer> rootStepCountInput = new Input<>("rootStepCount", "number of times each site for the root sequence is resampled (at initialisation only)", 1000);
 	final public Input<Integer> stepCountInput = new Input<>("stepCount", "number of times each site is resampled when sampling sequences conditioned on parent or parents and children", 100);
-	final public Input<Integer> resampleCountInput = new Input<>("resampleCount", "number of times each all sites in the alignment are resampled", 100);
+	final public Input<Integer> resampleCountInput = new Input<>("resampleCount", "number of times each all sites in the alignment are resampled", 1000);
 	
 	int stepCount;
 	int rootStepCount;
 	int resampleCount;
+
+	int dataStateCount;
 
 	@Override
 	public void initAndValidate() {
@@ -57,13 +59,15 @@ public class RootDCASequenceSimulator extends Runnable {
 		String json = BeautiDoc.load(dcaInput.get());
 		dca.fromJSON(new JSONObject(json));
 		
+		dataStateCount = dca.stateCount - 1;
+		
 		NexusParser parser = new NexusParser();
 		parser.parseFile(treeFileInput.get());
 		List<Tree> trees = parser.trees;
 
 		
-		DataType dataType = dca.stateCount == 21 ? new Aminoacid() : new Nucleotide();
-		SubstitutionModel model = dca.stateCount == 21 ? new WAG() : new JukesCantor();
+		DataType dataType = dataStateCount == 20 ? new Aminoacid() : new Nucleotide();
+		SubstitutionModel model = dataStateCount == 20 ? new WAG() : new JukesCantor();
 		((BEASTInterface)model).initAndValidate();
 		
 		if (trees.size() > 1) {
@@ -103,12 +107,12 @@ public class RootDCASequenceSimulator extends Runnable {
 		for (int i = 0; i < alignment.length; i++) {
 			int [] seq = alignment[i];
 			for (int j = 0; j < seq.length; j++) {
-				seq[j] = Randomizer.nextInt(dca.stateCount-1);
+				seq[j] = Randomizer.nextInt(dataStateCount);
 			}
 		}
 		
 		// sample root sequence
-		DCASequenceSimulator.sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount);
+		DCASequenceSimulator.sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount, dataStateCount);
 
 		// sample internal nodes & leaf nodes
 		traverseDown(alignment, dca, tree.getRoot(), matrices);
@@ -139,7 +143,7 @@ public class RootDCASequenceSimulator extends Runnable {
 		            // Try to mutate every site once (Standard sweep)
 		            for (int i = 0; i < dca.siteCount; i++) {
 		                int oldState = seq[i];
-		                int newState = Randomizer.nextInt(dca.stateCount);
+		                int newState = Randomizer.nextInt(dataStateCount);
 		                
 		                if (oldState == newState) continue;
 		
@@ -207,7 +211,7 @@ public class RootDCASequenceSimulator extends Runnable {
             // Try to mutate every site once (Standard sweep)
             for (int i = 0; i < dca.siteCount; i++) {
                 int oldState = seq[i];
-                int newState = Randomizer.nextInt(dca.stateCount);
+                int newState = Randomizer.nextInt(dataStateCount);
                 
                 if (oldState == newState) continue;
 
@@ -231,12 +235,12 @@ public class RootDCASequenceSimulator extends Runnable {
 			int [] seq = alignment[node.getNr()];
 			double [] matrix = matrices[node.getNr()];
 			int [] parentseq = alignment[node.getParent().getNr()];
-            double [] probs = new double[dca.stateCount];
+            double [] probs = new double[dataStateCount];
 			for (int step = 0; step < stepCount; step++) {
 	            // Try to mutate every site once (Standard sweep)
 	            for (int i = 0; i < dca.siteCount; i++) {
 	                int parentState = parentseq[i];
-	                System.arraycopy(matrix, parentState * dca.stateCount, probs, 0, dca.stateCount);
+	                System.arraycopy(matrix, parentState * dca.stateCount, probs, 0, dataStateCount);
 	                
 	                int newState = Randomizer.randomChoicePDF(probs);
 	                seq[i] = newState; // Accept mutation
@@ -265,7 +269,7 @@ public class RootDCASequenceSimulator extends Runnable {
         double delta = DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
 
         // Change in transition probability
-        delta += Math.log(matrix[parentState * (dca.stateCount-1) + newState]) - Math.log(matrix[parentState * (dca.stateCount-1) + oldState]);
+        delta += Math.log(matrix[parentState * dataStateCount + newState]) - Math.log(matrix[parentState * dataStateCount + oldState]);
 
         return delta;
     }    
@@ -284,8 +288,8 @@ public class RootDCASequenceSimulator extends Runnable {
 
         // Change in transition probability
         delta += 
-        		+Math.log(matrix1[newState * (dca.stateCount-1) + childState1]) - Math.log(matrix1[oldState * (dca.stateCount-1) + childState1])
-        		+Math.log(matrix2[newState * (dca.stateCount-1) + childState2]) - Math.log(matrix2[oldState * (dca.stateCount-1) + childState2]);
+        		+Math.log(matrix1[newState * dataStateCount + childState1]) - Math.log(matrix1[oldState * dataStateCount + childState1])
+        		+Math.log(matrix2[newState * dataStateCount + childState2]) - Math.log(matrix2[oldState * dataStateCount + childState2]);
         		
 
         return delta;
@@ -297,9 +301,9 @@ public class RootDCASequenceSimulator extends Runnable {
     		int childState2, double [] matrix2
     		) {
         double delta = 
-        		 Math.log(matrix[parentState * (dca.stateCount-1) + newState]) - Math.log(matrix[parentState * (dca.stateCount-1) + oldState])
-        		+Math.log(matrix1[newState * (dca.stateCount-1) + childState1]) - Math.log(matrix1[oldState * (dca.stateCount-1) + childState1])
-        		+Math.log(matrix2[newState * (dca.stateCount-1) + childState2]) - Math.log(matrix2[oldState * (dca.stateCount-1) + childState2]);
+        		 Math.log(matrix[parentState * dataStateCount + newState]) - Math.log(matrix[parentState * dataStateCount + oldState])
+        		+Math.log(matrix1[newState * dataStateCount + childState1]) - Math.log(matrix1[oldState * dataStateCount + childState1])
+        		+Math.log(matrix2[newState * dataStateCount + childState2]) - Math.log(matrix2[oldState * dataStateCount + childState2]);
         		
 
         return delta;
