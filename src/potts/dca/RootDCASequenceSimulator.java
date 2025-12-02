@@ -1,8 +1,6 @@
 package potts.dca;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
 import java.util.List;
 
 import org.json.JSONObject;
@@ -27,8 +25,8 @@ import beastfx.app.inputeditor.BeautiDoc;
 import beastfx.app.tools.Application;
 import beastfx.app.util.OutFile;
 
-@Description("Simulate alignment on a tree using the Potts model and WAG model")
-public class DCASequenceSimulator extends Runnable {
+@Description("Simulate alignment on a tree using the Potts model for root and tip sequences and WAG model in between")
+public class RootDCASequenceSimulator extends Runnable {
 	final public Input<File> dcaInput = new Input<>("dca", "DCA json file previously trained on an alignment", Validate.REQUIRED);
 	final public Input<File> treeFileInput = new Input<>("treeFile", "NEXUS tree file to simulate alignment for -- if there are "
 			+ "multiple trees, output files will be numbered."
@@ -79,12 +77,12 @@ public class DCASequenceSimulator extends Runnable {
 					path = path.substring(0, k) + (i<100?"0":"") + (i<10?"0":"") + i + path.substring(k+1);
 				}
 				
-				toFasta(alignment, path, tree, dataType);
+				DCASequenceSimulator.toFasta(alignment, path, tree, dataType);
 			}
 		} else {
 			Tree tree =  trees.get(0);
 			int [][] alignment = simulateAlignment(dca, tree, model);
-			toFasta(alignment, outputInput.get().getPath(), tree, dataType);
+			DCASequenceSimulator.toFasta(alignment, outputInput.get().getPath(), tree, dataType);
 		}
 		
 		long end = System.currentTimeMillis();
@@ -110,8 +108,12 @@ public class DCASequenceSimulator extends Runnable {
 		}
 		
 		// sample root sequence
-		sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount);
+		DCASequenceSimulator.sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount);
+
+		// sample internal nodes & leaf nodes
 		traverseDown(alignment, dca, tree.getRoot(), matrices);
+		
+		// resample all sequences, so dependencies are taken in account
 		for (int i = 0; i < resampleCount; i++) {
 			reSample(alignment, dca, tree.getRoot(), matrices);
 		}
@@ -120,9 +122,11 @@ public class DCASequenceSimulator extends Runnable {
 	}
 
 	private void reSample(int[][] alignment, DCA dca, Node node, double [][] matrices) {
-		if (!node.isRoot()) {
+		if (node.isRoot()) {
+			resampleRoot(alignment, dca, node, matrices);
+		} else {
 			if (node.isLeaf()) {
-				traverseDown(alignment, dca, node, matrices);
+				resampleLeaf(alignment, dca, node, matrices);
 			} else {
 				int [] seq = alignment[node.getNr()];
 				double [] matrix = matrices[node.getNr()];
@@ -163,43 +167,16 @@ public class DCASequenceSimulator extends Runnable {
 		}
 	}
 
-	private void traverseDown(int[][] alignment, DCA dca, Node node, double [][] matrices) {
-		if (!node.isRoot()) {
-			int [] seq = alignment[node.getNr()];
-			double [] matrix = matrices[node.getNr()];
-			int [] parentseq = alignment[node.getParent().getNr()];
-			for (int step = 0; step < stepCount; step++) {
-	            // Try to mutate every site once (Standard sweep)
-	            for (int i = 0; i < dca.siteCount; i++) {
-	                int oldState = seq[i];
-	                int newState = Randomizer.nextInt(dca.stateCount);
-	                
-	                if (oldState == newState) continue;
-	
-	                // Calculate change in Hamiltonian (Score)
-	                // Delta H = H(new) - H(old)
-	                // We accept if Delta H > 0 (more probable) or with prob exp(Delta H)
-	                
-	                double deltaH = computeDeltaHamiltonian(dca, seq, i, oldState, newState, parentseq[i], matrix);
-	                
-	                // Metropolis Criterion
-	                if (deltaH >= 0 || Randomizer.nextDouble() < Math.exp(deltaH)) {
-	                    seq[i] = newState; // Accept mutation
-	                }
-	            }
-	        }
+	private void resampleRoot(int[][] alignment, DCA dca, Node root, double[][] matrices) {
+		if (!root.isRoot()) {
+			throw new IllegalArgumentException("Expected root node");
 		}
-			
-		if (!node.isLeaf()) {
-			for (Node child : node.getChildren()) {
-				traverseDown(alignment, dca, child, matrices);
-			}
-		}
-	}
-	
-	
-	static void sampleRootSequence(int[] seq, DCA dca, int rootStepCount) {
-		for (int step = 0; step < rootStepCount; step++) {
+		int [] seq = alignment[root.getNr()];
+		int [] childseq1 = alignment[root.getLeft().getNr()];
+		double [] matrix1 = matrices[root.getLeft().getNr()];
+		int [] childseq2 = alignment[root.getRight().getNr()];
+		double [] matrix2 = matrices[root.getRight().getNr()];
+		for (int step = 0; step < stepCount; step++) {
             // Try to mutate every site once (Standard sweep)
             for (int i = 0; i < dca.siteCount; i++) {
                 int oldState = seq[i];
@@ -211,7 +188,35 @@ public class DCASequenceSimulator extends Runnable {
                 // Delta H = H(new) - H(old)
                 // We accept if Delta H > 0 (more probable) or with prob exp(Delta H)
                 
-                double deltaH = computeDeltaHamiltonian(dca, seq, i, oldState, newState);
+                double deltaH = computeDeltaHamiltonian(dca, seq, i, oldState, newState, 
+                		childseq1[i], matrix1, childseq2[i], matrix2);
+                
+                // Metropolis Criterion
+                if (deltaH >= 0 || Randomizer.nextDouble() < Math.exp(deltaH)) {
+                    seq[i] = newState; // Accept mutation
+                }
+            }
+        }		
+	}
+	
+	private void resampleLeaf(int[][] alignment, DCA dca, Node node, double[][] matrices) {
+		int [] seq = alignment[node.getNr()];
+		int [] parentseq = alignment[node.getParent().getNr()];
+		double [] matrix = matrices[node.getNr()];
+		for (int step = 0; step < stepCount; step++) {
+            // Try to mutate every site once (Standard sweep)
+            for (int i = 0; i < dca.siteCount; i++) {
+                int oldState = seq[i];
+                int newState = Randomizer.nextInt(dca.stateCount);
+                
+                if (oldState == newState) continue;
+
+                // Calculate change in Hamiltonian (Score)
+                // Delta H = H(new) - H(old)
+                // We accept if Delta H > 0 (more probable) or with prob exp(Delta H)
+                
+                double deltaH = computeDeltaHamiltonian(dca, seq, i, oldState, newState, 
+                		parentseq[i], matrix);
                 
                 // Metropolis Criterion
                 if (deltaH >= 0 || Randomizer.nextDouble() < Math.exp(deltaH)) {
@@ -220,33 +225,35 @@ public class DCASequenceSimulator extends Runnable {
             }
         }
 	}
-	
-	
-    /**
-     * Efficiently calculates the change in energy for a single mutation on a single sequence 
-	 * No parents or children.
-     * deltaH = (h_new - h_old) + Sum_neighbors(J_new_neighbor - J_old_neighbor)
-     */
-    static double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState) {
-        // 1. Change in Field Energy
-        double delta = dca.h[i][newState] - dca.h[i][oldState];
 
-        // 2. Change in Coupling Energy with all other sites j
-        for (int j = 0; j < dca.siteCount; j++) {
-            if (i == j) continue;
-            
-            int neighborState = seq[j];
-            
-            // Access J respecting i < j storage convention
-            if (i < j) {
-                delta += dca.J[i][j][newState][neighborState] - dca.J[i][j][oldState][neighborState];
-            } else {
-                // if i > j, we look up J[j][i][neighbour][target]
-                delta += dca.J[j][i][neighborState][newState] - dca.J[j][i][neighborState][oldState];
-            }
-        }
-        return delta;
-    }
+	private void traverseDown(int[][] alignment, DCA dca, Node node, double [][] matrices) {
+		if (!node.isRoot()) {
+			int [] seq = alignment[node.getNr()];
+			double [] matrix = matrices[node.getNr()];
+			int [] parentseq = alignment[node.getParent().getNr()];
+            double [] probs = new double[dca.stateCount];
+			for (int step = 0; step < stepCount; step++) {
+	            // Try to mutate every site once (Standard sweep)
+	            for (int i = 0; i < dca.siteCount; i++) {
+	                int parentState = parentseq[i];
+	                System.arraycopy(matrix, parentState * dca.stateCount, probs, 0, dca.stateCount);
+	                
+	                int newState = Randomizer.randomChoicePDF(probs);
+	                seq[i] = newState; // Accept mutation
+	            }
+	        }
+		}
+			
+		if (!node.isLeaf()) {
+			for (Node child : node.getChildren()) {
+				traverseDown(alignment, dca, child, matrices);
+			}
+		} else {
+			resampleLeaf(alignment, dca, node, matrices);
+		}
+	}
+	
+
 
     
     /**
@@ -255,7 +262,7 @@ public class DCASequenceSimulator extends Runnable {
      * deltaH = (h_new - h_old) + Sum_neighbors(J_new_neighbor - J_old_neighbor)
      */
     private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, int parentState, double [] matrix) {
-        double delta = computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
+        double delta = DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
 
         // Change in transition probability
         delta += Math.log(matrix[parentState * (dca.stateCount-1) + newState]) - Math.log(matrix[parentState * (dca.stateCount-1) + oldState]);
@@ -270,14 +277,13 @@ public class DCASequenceSimulator extends Runnable {
      * deltaH = (h_new - h_old) + Sum_neighbors(J_new_neighbor - J_old_neighbor)
      */
     private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, 
-    		int parentState, double [] matrix,
     		int childState1, double [] matrix1,
     		int childState2, double [] matrix2
     		) {
-        double delta = computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
+        double delta = DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
 
         // Change in transition probability
-        delta += Math.log(matrix[parentState * (dca.stateCount-1) + newState]) - Math.log(matrix[parentState * (dca.stateCount-1) + oldState])
+        delta += 
         		+Math.log(matrix1[newState * (dca.stateCount-1) + childState1]) - Math.log(matrix1[oldState * (dca.stateCount-1) + childState1])
         		+Math.log(matrix2[newState * (dca.stateCount-1) + childState2]) - Math.log(matrix2[oldState * (dca.stateCount-1) + childState2]);
         		
@@ -285,23 +291,22 @@ public class DCASequenceSimulator extends Runnable {
         return delta;
     }    
     
-	static public void toFasta(int[][] alignment, String path, Tree tree, DataType dataType) throws FileNotFoundException {
-		Log.warning("Output written to " + path);
-		PrintStream out = new PrintStream(path);
-		Node [] nodes = tree.getNodesAsArray();
-		for (int i = 0; i < tree.getLeafNodeCount(); i++) {
-			out.print(">");
-			out.println(nodes[i].getID());
-			int [] seq = alignment[i];
-			for (int j = 0; j < seq.length; j++) {
-				out.print(dataType.getCharacter(seq[j]));
-			}
-			out.println();
-		}
-		out.close();
-	}
+    private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, 
+    		int parentState, double [] matrix,
+    		int childState1, double [] matrix1,
+    		int childState2, double [] matrix2
+    		) {
+        double delta = 
+        		 Math.log(matrix[parentState * (dca.stateCount-1) + newState]) - Math.log(matrix[parentState * (dca.stateCount-1) + oldState])
+        		+Math.log(matrix1[newState * (dca.stateCount-1) + childState1]) - Math.log(matrix1[oldState * (dca.stateCount-1) + childState1])
+        		+Math.log(matrix2[newState * (dca.stateCount-1) + childState2]) - Math.log(matrix2[oldState * (dca.stateCount-1) + childState2]);
+        		
 
+        return delta;
+    }    
+
+    
 	public static void main(String[] args) throws Exception {
-		new Application(new DCASequenceSimulator(), "DCASequenceSimulator", args);
+		new Application(new RootDCASequenceSimulator(), "RootDCASequenceSimulator", args);
 	}
 }

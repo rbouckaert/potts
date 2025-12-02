@@ -230,19 +230,20 @@ public class PottsTreeLikelihood extends GenericTreeLikelihood {
    @Override
    public double calculateLogP() {
        logP = 0;
-		temperatureFactor = 1.0 / temperatureInput.get();
+	   temperatureFactor = 1.0 / temperatureInput.get();
        TreeInterface tree = treeInput.get();
        for (int i = tree.getLeafNodeCount(); i < tree.getNodeCount(); i++) {
     	   Node node = tree.getNode(i);
-    	   if (!node.isRoot()) {
-    		   logP -= substModelContribution[currentSubstModelIndex[i]][i];
+    	   if (!node.isRoot() && (node.isDirty() != Tree.IS_CLEAN || node.getParent().isDirty() != Tree.IS_CLEAN )) {
     		   currentSubstModelIndex[i] = 1-currentSubstModelIndex[i];
     		   substModelContribution[currentSubstModelIndex[i]][i] = substmodelContribution(node);
-    		   logP += substModelContribution[currentSubstModelIndex[i]][i];
     	   }
-		   logP -= dcaModelContribution[currentDCAModelIndex[i]][i];
-		   currentDCAModelIndex[i] = 1 - 	currentDCAModelIndex[i];
-		   dcaModelContribution[currentDCAModelIndex[i]][i] = dcaModelContribution(node); 
+    	   logP += substModelContribution[currentSubstModelIndex[i]][i];
+
+    	   if (sequences.isDirtySequence(i) ) {
+    		   currentDCAModelIndex[i] = 1 - currentDCAModelIndex[i];
+    		   dcaModelContribution[currentDCAModelIndex[i]][i] = temperatureFactor * dcaModelContribution(node);
+    	   }
 		   logP += dcaModelContribution[currentDCAModelIndex[i]][i];
        }
        return logP;
