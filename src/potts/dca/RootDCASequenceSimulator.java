@@ -36,13 +36,23 @@ public class RootDCASequenceSimulator extends Runnable {
 	final public Input<Integer> rootStepCountInput = new Input<>("rootStepCount", "number of times each site for the root sequence is resampled (at initialisation only)", 1000);
 	final public Input<Integer> stepCountInput = new Input<>("stepCount", "number of times each site is resampled when sampling sequences conditioned on parent or parents and children", 100);
 	final public Input<Integer> resampleCountInput = new Input<>("resampleCount", "number of times each all sites in the alignment are resampled", 1000);
-	
+
+	final public Input<Long> seedInput = new Input<>("seed", "random number seed, if not specified, take default seed (time dependent)");
+
+	final public Input<Double> temperatureInput = new Input<>("temperature", "temperature balancing the effect of Potts model Pt and substitution model Ps. "
+			+ "Mutations are chosen proportional to Pt^1/t * Ps (thus the Potss model weighted by 1/t)", 1.0);
+
 	int stepCount;
 	int rootStepCount;
 	int resampleCount;
 
 	int dataStateCount;
+	
+	double temperatureFactor;
 
+    final public static String BAR = "|---------|---------|---------|---------|---------|---------|---------|---------|";
+	
+	
 	@Override
 	public void initAndValidate() {
 	}
@@ -50,6 +60,11 @@ public class RootDCASequenceSimulator extends Runnable {
 	@Override
 	public void run() throws Exception {
 		long start = System.currentTimeMillis();
+		
+		if (seedInput.get() != null ) {
+			Randomizer.setSeed(seedInput.get());
+		}
+		temperatureFactor = 1.0 / temperatureInput.get();
 
 		stepCount = stepCountInput.get();
 		rootStepCount = rootStepCountInput.get();
@@ -118,9 +133,24 @@ public class RootDCASequenceSimulator extends Runnable {
 		traverseDown(alignment, dca, tree.getRoot(), matrices);
 		
 		// resample all sequences, so dependencies are taken in account
-		for (int i = 0; i < resampleCount; i++) {
+		int reported = 0;
+        int lines = Math.max(1, resampleCount / 80);
+
+        Log.warning.println(BAR);
+        for (int i = 0; i < resampleCount; i++) {
 			reSample(alignment, dca, tree.getRoot(), matrices);
+            if (i > 0 && i % lines == 0 && reported < 81) {
+				while (10000 * reported < 810000 * (i + 1)/ resampleCount) {
+					if (reported % 10 != 0) {
+						Log.warning.print("*");
+					} else {
+						Log.warning.print("|");
+					}
+	                reported++;
+        	    }
+            }
 		}
+        Log.warning.println();
 		
 		return alignment;
 	}
@@ -132,36 +162,7 @@ public class RootDCASequenceSimulator extends Runnable {
 			if (node.isLeaf()) {
 				resampleLeaf(alignment, dca, node, matrices);
 			} else {
-				int [] seq = alignment[node.getNr()];
-				double [] matrix = matrices[node.getNr()];
-				int [] parentseq = alignment[node.getParent().getNr()];
-				int [] childseq1 = alignment[node.getLeft().getNr()];
-				double [] matrix1 = matrices[node.getLeft().getNr()];
-				int [] childseq2 = alignment[node.getRight().getNr()];
-				double [] matrix2 = matrices[node.getRight().getNr()];
-				for (int step = 0; step < stepCount; step++) {
-		            // Try to mutate every site once (Standard sweep)
-		            for (int i = 0; i < dca.siteCount; i++) {
-		                int oldState = seq[i];
-		                int newState = Randomizer.nextInt(dataStateCount);
-		                
-		                if (oldState == newState) continue;
-		
-		                // Calculate change in Hamiltonian (Score)
-		                // Delta H = H(new) - H(old)
-		                // We accept if Delta H > 0 (more probable) or with prob exp(Delta H)
-		                
-		                double deltaH = computeDeltaHamiltonian(dca, seq, i, oldState, newState, 
-		                		parentseq[i], matrix,
-		                		childseq1[i], matrix1,
-		                		childseq2[i], matrix2);
-		                
-		                // Metropolis Criterion
-		                if (deltaH >= 0 || Randomizer.nextDouble() < Math.exp(deltaH)) {
-		                    seq[i] = newState; // Accept mutation
-		                }
-		            }
-		        }
+				resampleInternalNode(alignment, dca, node, matrices);
 			}
 		}
 		if (!node.isLeaf()) {
@@ -169,6 +170,37 @@ public class RootDCASequenceSimulator extends Runnable {
 				reSample(alignment, dca, child, matrices);
 			}
 		}
+		if (!node.isRoot() && ! node.isLeaf()) {
+			resampleInternalNode(alignment, dca, node, matrices);
+		}
+	}
+
+	private void resampleInternalNode(int[][] alignment, DCA dca, Node node, double[][] matrices) {
+		int [] seq = alignment[node.getNr()];
+		double [] matrix = matrices[node.getNr()];
+		int [] parentseq = alignment[node.getParent().getNr()];
+		int [] childseq1 = alignment[node.getLeft().getNr()];
+		double [] matrix1 = matrices[node.getLeft().getNr()];
+		int [] childseq2 = alignment[node.getRight().getNr()];
+		double [] matrix2 = matrices[node.getRight().getNr()];
+        double [] probs = new double[dataStateCount];
+
+		
+		for (int step = 0; step < stepCount; step++) {
+            // Try to mutate every site once (Standard sweep)
+            for (int i = 0; i < dca.siteCount; i++) {
+                int partenState = parentseq[i];
+                int child1State = childseq1[i];
+                int child2State = childseq2[i];
+                for (int k = 0; k < dataStateCount; k++) {
+                	probs[k] = matrix[partenState * dataStateCount + k] *
+                			matrix1[k * dataStateCount + child1State] *
+                			matrix2[k * dataStateCount + child2State];
+                }
+                int newState = Randomizer.randomChoicePDF(probs);
+                seq[i] = newState;
+            }
+        }
 	}
 
 	private void resampleRoot(int[][] alignment, DCA dca, Node root, double[][] matrices) {
@@ -240,7 +272,7 @@ public class RootDCASequenceSimulator extends Runnable {
 	            // Try to mutate every site once (Standard sweep)
 	            for (int i = 0; i < dca.siteCount; i++) {
 	                int parentState = parentseq[i];
-	                System.arraycopy(matrix, parentState * dca.stateCount, probs, 0, dataStateCount);
+	                System.arraycopy(matrix, parentState * dataStateCount, probs, 0, dataStateCount);
 	                
 	                int newState = Randomizer.randomChoicePDF(probs);
 	                seq[i] = newState; // Accept mutation
@@ -253,7 +285,7 @@ public class RootDCASequenceSimulator extends Runnable {
 				traverseDown(alignment, dca, child, matrices);
 			}
 		} else {
-			resampleLeaf(alignment, dca, node, matrices);
+ 			resampleLeaf(alignment, dca, node, matrices);
 		}
 	}
 	
@@ -266,7 +298,7 @@ public class RootDCASequenceSimulator extends Runnable {
      * deltaH = (h_new - h_old) + Sum_neighbors(J_new_neighbor - J_old_neighbor)
      */
     private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, int parentState, double [] matrix) {
-        double delta = DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
+        double delta = temperatureFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
 
         // Change in transition probability
         delta += Math.log(matrix[parentState * dataStateCount + newState]) - Math.log(matrix[parentState * dataStateCount + oldState]);
@@ -284,7 +316,7 @@ public class RootDCASequenceSimulator extends Runnable {
     		int childState1, double [] matrix1,
     		int childState2, double [] matrix2
     		) {
-        double delta = DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
+        double delta = temperatureFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
 
         // Change in transition probability
         delta += 
@@ -294,21 +326,6 @@ public class RootDCASequenceSimulator extends Runnable {
 
         return delta;
     }    
-    
-    private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, 
-    		int parentState, double [] matrix,
-    		int childState1, double [] matrix1,
-    		int childState2, double [] matrix2
-    		) {
-        double delta = 
-        		 Math.log(matrix[parentState * dataStateCount + newState]) - Math.log(matrix[parentState * dataStateCount + oldState])
-        		+Math.log(matrix1[newState * dataStateCount + childState1]) - Math.log(matrix1[oldState * dataStateCount + childState1])
-        		+Math.log(matrix2[newState * dataStateCount + childState2]) - Math.log(matrix2[oldState * dataStateCount + childState2]);
-        		
-
-        return delta;
-    }    
-
     
 	public static void main(String[] args) throws Exception {
 		new Application(new RootDCASequenceSimulator(), "RootDCASequenceSimulator", args);

@@ -4,12 +4,14 @@ import beagle.Beagle;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Input.Validate;
+import beast.base.core.Log;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.sitemodel.SiteModelInterface;
 import beast.base.evolution.sitemodel.SiteModelInterface.Base;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 import beast.base.inference.parameter.IntegerParameter;
+import beast.base.util.Randomizer;
 
 @Description("Tree-likelihood that allows site specific root states that are allowed to change")
 public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihood.TreeLikelihood {
@@ -72,6 +74,21 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 
 	protected void initRootFrequencies() {
 		IntegerParameter seq = rootFrequenciesSequenceInput.get();
+		
+		// initialising root sequence based on frequencies occurring at each site
+		Log.warning("initialising root sequence based on frequencies occurring at each site");
+		
+		Alignment data = dataInput.get();
+		seq.setDimension(siteCount);
+		for (int i = 0; i < siteCount; i++) {
+			int [] pattern = data.getPattern(data.getPatternIndex(i));
+			double [] probs = new double[stateCount];
+			for (int k : pattern) {
+				probs[k]++;
+			}
+			int newState = Randomizer.randomChoicePDF(probs);
+			seq.setValue(i, newState);
+		}
 		
 		Integer [] values = seq.getValues();
 		for (int i = 0; i < siteCount; i++) {
@@ -318,8 +335,8 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
             for (int k = 0; k < siteCount; k++) {
                 double sum = 0.0;
                 int i = data.getPatternIndex(k);
-                sum += partials[stateCount * i + rootFrequencies[i]];
-                outLogLikelihoods[k] = Math.log(sum) + getLikelihoodCore().getLogScalingFactor(k);
+                sum += partials[stateCount * i + rootFrequencies[k]];
+                outLogLikelihoods[k] = Math.log(sum) + getLikelihoodCore().getLogScalingFactor(i);
             }
 //        }
 	}

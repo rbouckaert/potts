@@ -28,10 +28,14 @@ public class PottsSequenceLikelihood extends Distribution {
 
     final public Input<Alignment> dataInput = new Input<>("data", "sequence data for the beast.tree", Validate.REQUIRED);
 
+	final public Input<Double> temperatureInput = new Input<>("temperature", "temperature balancing the effect of Potts model Pt and substitution model Ps. "
+			+ "Mutations are chosen proportional to Pt^1/t * Ps (thus the Potss model weighted by 1/t)", 1.0);
+
 	/** direct coupling analysis **/
 	DCA dca;
 	IntegerParameter sequence;
 	int siteCount, stateCount;
+	double temperatureFactor;
 
 	@Override
 	public void initAndValidate() {
@@ -50,6 +54,7 @@ public class PottsSequenceLikelihood extends Distribution {
 					+ stateCount + ") should match");
 		}
 
+		temperatureFactor = 1.0 / temperatureInput.get();
 		super.initAndValidate();
 	}
 
@@ -69,6 +74,8 @@ public class PottsSequenceLikelihood extends Distribution {
 			}
 		}
 
+		logP *= temperatureFactor;
+		
 		return logP;
 	}
 

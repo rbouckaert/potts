@@ -9,12 +9,13 @@ import beast.base.inference.parameter.IntegerParameter;
 import beast.base.util.Randomizer;
 import potts.dca.DCA;
 import potts.dca.DCASequenceSimulator;
+import potts.likelihood.PottsSequenceLikelihood;
 import potts.likelihood.TreeLikelihoodWithRootStates;
 
 @Description("Gibbs sampler for root sequence in TreeLikelihoodWithRootStates")
 public class RootSequenceResampler extends Operator {
 
-	final public Input<DCA> dcaInput = new Input<>("dca", "DCA json file previously trained on an alignment",
+	final public Input<PottsSequenceLikelihood> pottsSeqLikelihoodInput = new Input<>("pottsSeqLikelihood", "DCA json file previously trained on an alignment",
 			Validate.REQUIRED);
 
 	final public Input<IntegerParameter> sequenceInput = new Input<>("sequence",
@@ -24,22 +25,26 @@ public class RootSequenceResampler extends Operator {
 			"TreeLikelihood With Root States to provide root partials", Validate.REQUIRED);
 	
 	final public Input<Integer> stepCountInput = new Input<>("stepCount", 
-			"number of times a site is resampled", 10000);
+			"average number of times a site is resampled", 20);
 
 	DCA dca;
 	IntegerParameter sequence;
 	TreeLikelihoodWithRootStates likelihood;
-	int stepCount, stateCount;
+	int totalStepCount, stateCount;
 	Alignment data;
+	double temperaturFactor;
 	
 	@Override
 	public void initAndValidate() {
-		dca = dcaInput.get();
+		PottsSequenceLikelihood psl = pottsSeqLikelihoodInput.get();
+		dca = psl.dcaInput.get();
+		temperaturFactor = 1.0 / psl.temperatureInput.get();
+		
 		sequence = sequenceInput.get();
 		likelihood = likelihoodInput.get();
 		data = likelihood.dataInput.get();
-		stepCount = stepCountInput.get();
-		stateCount = sequence.getUpper();
+		totalStepCount = stepCountInput.get() * sequence.getDimension();
+		stateCount = dca.getStateCount() - 1;
 	}
 
 	@Override
@@ -51,19 +56,33 @@ public class RootSequenceResampler extends Operator {
 		}
 		
 		double [] rootPartials = likelihood.getRootPartials();
+		double [] probs = new double[stateCount];
 		
-		for (int i = 0; i < stepCount; i++) {
+		
+		for (int i = 0; i < totalStepCount; i++) {
 			int site = Randomizer.nextInt(values.length);
 			int oldState = seq[site];
-			int newState = Randomizer.nextInt(stateCount);
-			if (oldState != newState) {
-                double deltaH = computeDeltaHamiltonian(dca, seq, site, oldState, newState, rootPartials); 
-                
-                // Metropolis Criterion
-                if (deltaH >= 0 || Randomizer.nextDouble() < Math.exp(deltaH)) {
-                    seq[site] = newState; // Accept mutation
-                }
+			for (int newState = 0; newState < stateCount; newState++) {
+				if (oldState == newState) {
+					probs[newState] = 0;
+				} else {
+					probs[newState] = computeDeltaHamiltonian(dca, seq, site, oldState, newState, rootPartials);
+				}
 			}
+			
+			// find max
+			double max = probs[0];
+			for (double d : probs) {
+				max = Math.max(d, max);
+			}
+			
+			// to real space
+			for (int k = 0; k < stateCount; k++) {
+				probs[k] = Math.exp(probs[k] - max);
+			}
+			
+			int newState = Randomizer.randomChoicePDF(probs);
+            seq[site] = newState;
 		}
 		
 		
@@ -77,7 +96,11 @@ public class RootSequenceResampler extends Operator {
 	
     private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, 
     		double [] rootPartials) {
-        double delta = DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState);
+//    	if (true) {
+//            int patternIndexOffset = data.getPatternIndex(i) * stateCount;
+//    		return Math.log(rootPartials[patternIndexOffset + newState]) - Math.log(rootPartials[patternIndexOffset + oldState]);
+//    	}
+        double delta = temperaturFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState);
         
         int patternIndexOffset = data.getPatternIndex(i) * stateCount;
 
