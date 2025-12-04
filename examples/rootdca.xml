@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><beast beautitemplate='Standard' beautistatus='' namespace="beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:beast.evolution.substitutionmodel:beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood" required="BEAST.base v2.7.8" version="2.7">
+
+    <data
+id="aars2bsimulated"
+spec="feast.fileio.AlignmentFromFasta"
+fileName="$(fasta=aars2bsimulated.fasta)"
+dataType="aminoacid"
+name="alignment">
+    </data>
+    
+
+    <map name="Uniform" >beast.base.inference.distribution.Uniform</map>
+
+    <map name="Exponential" >beast.base.inference.distribution.Exponential</map>
+
+    <map name="LogNormal" >beast.base.inference.distribution.LogNormalDistributionModel</map>
+
+    <map name="Normal" >beast.base.inference.distribution.Normal</map>
+
+    <map name="Beta" >beast.base.inference.distribution.Beta</map>
+
+    <map name="Gamma" >beast.base.inference.distribution.Gamma</map>
+
+    <map name="LaplaceDistribution" >beast.base.inference.distribution.LaplaceDistribution</map>
+
+    <map name="prior" >beast.base.inference.distribution.Prior</map>
+
+    <map name="InverseGamma" >beast.base.inference.distribution.InverseGamma</map>
+
+    <map name="OneOnX" >beast.base.inference.distribution.OneOnX</map>
+
+    <run id="mcmc" spec="MCMC" chainLength="10000000">
+        <state id="state" spec="State" storeEvery="5000">
+            <tree id="Tree.t:aars2bsimulated" spec="beast.base.evolution.tree.Tree" name="stateNode">
+                <taxonset id="TaxonSet.aars2bsimulated" spec="TaxonSet">
+                    <alignment idref="aars2bsimulated"/>
+                </taxonset>
+            </tree>
+            <parameter id="birthRate.t:aars2bsimulated" spec="parameter.RealParameter" lower="0.0" name="stateNode">1.0</parameter>
+
+            <stateNode id="rootstates" spec="parameter.IntegerParameter" dimension="82" value="0" lower="0" upper="19"/>
+        </state>
+        
+        <init id="RandomTree.t:aars2bsimulated" spec="RandomTree" estimate="false" initial="@Tree.t:aars2bsimulated" taxa="@aars2bsimulated">
+            <populationModel id="ConstantPopulation0.t:aars2bsimulated" spec="ConstantPopulation">
+                <parameter id="randomPopSize.t:aars2bsimulated" spec="parameter.RealParameter" name="popSize">1.0</parameter>
+            </populationModel>
+        </init>
+        
+        <distribution id="posterior" spec="CompoundDistribution">
+            <distribution id="prior" spec="CompoundDistribution">
+                <distribution id="YuleModel.t:aars2bsimulated" spec="beast.base.evolution.speciation.YuleModel" birthDiffRate="@birthRate.t:aars2bsimulated" tree="@Tree.t:aars2bsimulated"/>
+                <prior id="YuleBirthRatePrior.t:aars2bsimulated" name="distribution" x="@birthRate.t:aars2bsimulated">
+                    <Uniform id="Uniform.1" name="distr" upper="Infinity"/>
+                </prior>
+            </distribution>
+            <distribution id="likelihood" spec="CompoundDistribution" useThreads="true">
+
+                <distribution id="PottsSequenceLikelihood.aars2bsimulated" spec="potts.likelihood.PottsSequenceLikelihood"
+	                temperature="10000">
+                    <data idref="aars2bsimulated"/>
+                	<sequence idref="rootstates"/>
+                	<dca id="dca" spec="potts.dca.DCAFromFile" fileName="$(dca=test.json)"/>
+                </distribution>
+                
+                <distribution id="treeLikelihood.aars2bsimulated" spec="potts.likelihood.TreeLikelihoodWithRootStates" data="@aars2bsimulated" tree="@Tree.t:aars2bsimulated">
+                	<rootstates idref="rootstates"/>
+                    <siteModel id="SiteModel.s:aars2bsimulated" spec="SiteModel">
+                        <parameter id="mutationRate.s:aars2bsimulated" spec="parameter.RealParameter" estimate="false" lower="0.0" name="mutationRate">1.0</parameter>
+                        <parameter id="gammaShape.s:aars2bsimulated" spec="parameter.RealParameter" estimate="false" lower="0.1" name="shape">1.0</parameter>
+                        <parameter id="proportionInvariant.s:aars2bsimulated" spec="parameter.RealParameter" estimate="false" lower="0.0" name="proportionInvariant" upper="1.0">0.0</parameter>
+                        <substModel id="WAG.s:aars2bsimulated" spec="WAG"/>
+                    </siteModel>
+                    <branchRateModel id="StrictClock.c:aars2bsimulated" spec="beast.base.evolution.branchratemodel.StrictClockModel">
+                        <parameter id="clockRate.c:aars2bsimulated" spec="parameter.RealParameter" estimate="false" lower="0.0" name="clock.rate">1.0</parameter>
+                    </branchRateModel>
+                </distribution>
+                
+            </distribution>
+        </distribution>
+        
+        <operator id="RootSequenceResampler" spec="potts.operator.RootSequenceResampler" 
+        	pottsSeqLikelihood="@PottsSequenceLikelihood.aars2bsimulated"
+        	sequence="@rootstates" 
+        	likelihood="@treeLikelihood.aars2bsimulated" 
+        	weight="1.0"/>
+        
+        <operator id="YuleBirthRateScaler.t:aars2bsimulated" spec="kernel.BactrianScaleOperator" parameter="@birthRate.t:aars2bsimulated" upper="10.0" weight="3.0"/>
+        <operator id="YuleModelTreeRootScaler.t:aars2bsimulated" spec="kernel.BactrianScaleOperator" rootOnly="true" scaleFactor="0.5" tree="@Tree.t:aars2bsimulated" upper="10.0" weight="3.0"/>
+        <operator id="YuleModelUniformOperator.t:aars2bsimulated" spec="kernel.BactrianNodeOperator" tree="@Tree.t:aars2bsimulated" weight="30.0"/>
+        <operator id="YuleModelSubtreeSlide.t:aars2bsimulated" spec="kernel.BactrianSubtreeSlide" tree="@Tree.t:aars2bsimulated" weight="15.0"/>
+        <operator id="YuleModelNarrow.t:aars2bsimulated" spec="Exchange" tree="@Tree.t:aars2bsimulated" weight="15.0"/>
+        <operator id="YuleModelWide.t:aars2bsimulated" spec="Exchange" isNarrow="false" tree="@Tree.t:aars2bsimulated" weight="3.0"/>
+        <operator id="YuleModelWilsonBalding.t:aars2bsimulated" spec="WilsonBalding" tree="@Tree.t:aars2bsimulated" weight="3.0"/>
+        <operator id="YuleModelBICEPSEpochTop.t:aars2bsimulated" spec="EpochFlexOperator" scaleFactor="0.1" tree="@Tree.t:aars2bsimulated" weight="2.0"/>
+        <operator id="YuleModelBICEPSEpochAll.t:aars2bsimulated" spec="EpochFlexOperator" fromOldestTipOnly="false" scaleFactor="0.1" tree="@Tree.t:aars2bsimulated" weight="2.0"/>
+        <operator id="YuleModelBICEPSTreeFlex.t:aars2bsimulated" spec="TreeStretchOperator" scaleFactor="0.01" tree="@Tree.t:aars2bsimulated" weight="2.0"/>
+
+        <logger id="tracelog" spec="Logger" fileName="$(filebase).log" logEvery="1000" model="@posterior" sanitiseHeaders="true" sort="smart">
+            <log idref="posterior"/>
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+            <log idref="treeLikelihood.aars2bsimulated"/>
+            <log idref="PottsSequenceLikelihood.aars2bsimulated"/>
+            <log id="TreeHeight.t:aars2bsimulated" spec="beast.base.evolution.tree.TreeStatLogger" tree="@Tree.t:aars2bsimulated"/>
+            <log idref="YuleModel.t:aars2bsimulated"/>
+            <log idref="birthRate.t:aars2bsimulated"/>
+            <log idref="rootstates"/>
+        </logger>
+        <logger id="screenlog" spec="Logger" logEvery="1000">
+            <log idref="posterior"/>
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+            <log idref="TreeHeight.t:aars2bsimulated"/>
+        </logger>
+        <logger id="treelog.t:aars2bsimulated" spec="Logger" fileName="$(filebase).trees" logEvery="1000" mode="tree">
+            <log id="TreeWithMetaDataLogger.t:aars2bsimulated" spec="beast.base.evolution.TreeWithMetaDataLogger" tree="@Tree.t:aars2bsimulated"/>
+        </logger>
+        <operatorschedule id="OperatorSchedule" spec="OperatorSchedule"/>
+    </run>
+
+</beast>

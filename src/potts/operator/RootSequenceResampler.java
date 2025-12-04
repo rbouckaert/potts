@@ -96,10 +96,10 @@ public class RootSequenceResampler extends Operator {
 	
     private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, 
     		double [] rootPartials) {
-//    	if (true) {
-//            int patternIndexOffset = data.getPatternIndex(i) * stateCount;
-//    		return Math.log(rootPartials[patternIndexOffset + newState]) - Math.log(rootPartials[patternIndexOffset + oldState]);
-//    	}
+    	if (true) {
+            int patternIndexOffset = data.getPatternIndex(i) * stateCount;
+    		return Math.log(rootPartials[patternIndexOffset + newState]) - Math.log(rootPartials[patternIndexOffset + oldState]);
+    	}
         double delta = temperaturFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState);
         
         int patternIndexOffset = data.getPatternIndex(i) * stateCount;

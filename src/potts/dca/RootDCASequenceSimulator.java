@@ -40,7 +40,8 @@ public class RootDCASequenceSimulator extends Runnable {
 	final public Input<Long> seedInput = new Input<>("seed", "random number seed, if not specified, take default seed (time dependent)");
 
 	final public Input<Double> temperatureInput = new Input<>("temperature", "temperature balancing the effect of Potts model Pt and substitution model Ps. "
-			+ "Mutations are chosen proportional to Pt^1/t * Ps (thus the Potss model weighted by 1/t)", 1.0);
+			+ "Mutations are chosen proportional to Pt^1/t * Ps (thus the Potss model weighted by 1/t). "
+			+ "If negative, Potts model is ignored.", 1.0);
 
 	int stepCount;
 	int rootStepCount;
@@ -127,7 +128,16 @@ public class RootDCASequenceSimulator extends Runnable {
 		}
 		
 		// sample root sequence
-		DCASequenceSimulator.sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount, dataStateCount);
+		if (temperatureFactor > 0) {
+			DCASequenceSimulator.sampleRootSequence(alignment[tree.getRoot().getNr()], dca, rootStepCount, dataStateCount);
+		} else {
+			int siteCount = alignment[tree.getRoot().getNr()].length;
+			double [] freqs = model.getFrequencies();
+			for (int i = 0; i < siteCount; i++) {
+				alignment[tree.getRoot().getNr()][i] = Randomizer.randomChoicePDF(freqs);
+			}
+		}
+		
 
 		// sample internal nodes & leaf nodes
 		traverseDown(alignment, dca, tree.getRoot(), matrices);
@@ -217,16 +227,16 @@ public class RootDCASequenceSimulator extends Runnable {
             for (int i = 0; i < dca.siteCount; i++) {
                 int oldState = seq[i];
                 int newState = Randomizer.nextInt(dca.stateCount);
-                
+
                 if (oldState == newState) continue;
 
                 // Calculate change in Hamiltonian (Score)
                 // Delta H = H(new) - H(old)
                 // We accept if Delta H > 0 (more probable) or with prob exp(Delta H)
-                
-                double deltaH = computeDeltaHamiltonian(dca, seq, i, oldState, newState, 
+
+                double deltaH = computeDeltaHamiltonian(dca, seq, i, oldState, newState,
                 		childseq1[i], matrix1, childseq2[i], matrix2);
-                
+
                 // Metropolis Criterion
                 if (deltaH >= 0 || Randomizer.nextDouble() < Math.exp(deltaH)) {
                     seq[i] = newState; // Accept mutation
@@ -244,16 +254,16 @@ public class RootDCASequenceSimulator extends Runnable {
             for (int i = 0; i < dca.siteCount; i++) {
                 int oldState = seq[i];
                 int newState = Randomizer.nextInt(dataStateCount);
-                
+
                 if (oldState == newState) continue;
 
                 // Calculate change in Hamiltonian (Score)
                 // Delta H = H(new) - H(old)
                 // We accept if Delta H > 0 (more probable) or with prob exp(Delta H)
-                
-                double deltaH = computeDeltaHamiltonian(dca, seq, i, oldState, newState, 
+
+                double deltaH = computeDeltaHamiltonian(dca, seq, i, oldState, newState,
                 		parentseq[i], matrix);
-                
+
                 // Metropolis Criterion
                 if (deltaH >= 0 || Randomizer.nextDouble() < Math.exp(deltaH)) {
                     seq[i] = newState; // Accept mutation
@@ -291,42 +301,48 @@ public class RootDCASequenceSimulator extends Runnable {
 	
 
 
-    
+
     /**
      * Efficiently calculates the change in energy for a single mutation on a single sequence
      * taking parent state in account
      * deltaH = (h_new - h_old) + Sum_neighbors(J_new_neighbor - J_old_neighbor)
      */
     private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, int parentState, double [] matrix) {
-        double delta = temperatureFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
+        double delta =
+        		temperatureFactor > 0 ?
+        		temperatureFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState) :
+        		0;
 
         // Change in transition probability
         delta += Math.log(matrix[parentState * dataStateCount + newState]) - Math.log(matrix[parentState * dataStateCount + oldState]);
 
         return delta;
-    }    
+    }
 
-    
+
     /**
      * Efficiently calculates the change in energy for a single mutation on a single sequence
      * taking parent and child states in account
      * deltaH = (h_new - h_old) + Sum_neighbors(J_new_neighbor - J_old_neighbor)
      */
-    private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, 
+    private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState,
     		int childState1, double [] matrix1,
     		int childState2, double [] matrix2
     		) {
-        double delta = temperatureFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState); 
+        double delta =
+        		temperatureFactor > 0 ?
+        		temperatureFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState):
+        		0;
 
         // Change in transition probability
-        delta += 
+        delta +=
         		+Math.log(matrix1[newState * dataStateCount + childState1]) - Math.log(matrix1[oldState * dataStateCount + childState1])
         		+Math.log(matrix2[newState * dataStateCount + childState2]) - Math.log(matrix2[oldState * dataStateCount + childState2]);
         		
 
         return delta;
-    }    
-    
+    }
+
 	public static void main(String[] args) throws Exception {
 		new Application(new RootDCASequenceSimulator(), "RootDCASequenceSimulator", args);
 	}

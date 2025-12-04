@@ -1,12 +1,7 @@
 package potts.likelihood;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.Random;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
@@ -29,7 +24,8 @@ public class PottsSequenceLikelihood extends Distribution {
     final public Input<Alignment> dataInput = new Input<>("data", "sequence data for the beast.tree", Validate.REQUIRED);
 
 	final public Input<Double> temperatureInput = new Input<>("temperature", "temperature balancing the effect of Potts model Pt and substitution model Ps. "
-			+ "Mutations are chosen proportional to Pt^1/t * Ps (thus the Potss model weighted by 1/t)", 1.0);
+			+ "Mutations are chosen proportional to Pt^1/t * Ps (thus the Potss model weighted by 1/t). "
+			+ "If negative, Potts model contributino will be ignored", 1.0);
 
 	/** direct coupling analysis **/
 	DCA dca;
@@ -61,20 +57,22 @@ public class PottsSequenceLikelihood extends Distribution {
 	@Override
 	public double calculateLogP() {
 		logP = 0;
-
-		Integer[] seq = sequence.getValues();
-		double[][] h = dca.getH();
-		double[][][][] J = dca.getJ();
-		for (int i = 0; i < siteCount; i++) {
-			int a = seq[i];
-			logP += h[i][a];
-			for (int j = i + 1; j < siteCount; j++) {
-				int b = seq[j];
-				logP += J[i][j][a][b];
+		
+		if (temperatureFactor > 0) {
+			Integer[] seq = sequence.getValues();
+			double[][] h = dca.getH();
+			double[][][][] J = dca.getJ();
+			for (int i = 0; i < siteCount; i++) {
+				int a = seq[i];
+				logP += h[i][a];
+				for (int j = i + 1; j < siteCount; j++) {
+					int b = seq[j];
+					logP += J[i][j][a][b];
+				}
 			}
+	
+			logP *= temperatureFactor;
 		}
-
-		logP *= temperatureFactor;
 		
 		return logP;
 	}
