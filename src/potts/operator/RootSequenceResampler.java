@@ -45,6 +45,7 @@ public class RootSequenceResampler extends Operator {
 		data = likelihood.dataInput.get();
 		totalStepCount = stepCountInput.get() * sequence.getDimension();
 		stateCount = dca.getStateCount() - 1;
+		
 	}
 
 	@Override
@@ -59,6 +60,10 @@ public class RootSequenceResampler extends Operator {
 		double [] probs = new double[stateCount];
 		
 		
+		double [] freqs = likelihood.getSubstitutionModel().getFrequencies();
+
+//totalStepCount = 1;
+
 		for (int i = 0; i < totalStepCount; i++) {
 			int site = Randomizer.nextInt(values.length);
 			int oldState = seq[site];
@@ -66,7 +71,7 @@ public class RootSequenceResampler extends Operator {
 				if (oldState == newState) {
 					probs[newState] = 0;
 				} else {
-					probs[newState] = computeDeltaHamiltonian(dca, seq, site, oldState, newState, rootPartials);
+					probs[newState] = computeDeltaHamiltonian(dca, seq, site, oldState, newState, rootPartials, freqs);
 				}
 			}
 			
@@ -82,6 +87,8 @@ public class RootSequenceResampler extends Operator {
 			}
 			
 			int newState = Randomizer.randomChoicePDF(probs);
+			//int newState = Randomizer.randomChoicePDF(freqs);
+			//int newState = Randomizer.nextInt(freqs.length);
             seq[site] = newState;
 		}
 		
@@ -90,22 +97,21 @@ public class RootSequenceResampler extends Operator {
 			sequence.setValue(i, seq[i]);
 		}
 		
+		//return 0;
 		return Double.POSITIVE_INFINITY;
 	}
 
 	
     private double computeDeltaHamiltonian(DCA dca, int[] seq, int i, int oldState, int newState, 
-    		double [] rootPartials) {
-    	if (true) {
-            int patternIndexOffset = data.getPatternIndex(i) * stateCount;
-    		return Math.log(rootPartials[patternIndexOffset + newState]) - Math.log(rootPartials[patternIndexOffset + oldState]);
-    	}
-        double delta = temperaturFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState);
+    		double [] rootPartials, double [] freqs) {
+        double delta =  (temperaturFactor > 0) ? 
+        		temperaturFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, i, oldState, newState)
+        		: 0;
         
         int patternIndexOffset = data.getPatternIndex(i) * stateCount;
 
         // Change in transition probability
-        delta += Math.log(rootPartials[patternIndexOffset + newState]) - Math.log(rootPartials[patternIndexOffset + oldState]);
+        delta += Math.log(rootPartials[patternIndexOffset + newState]);// * freqs[newState]);// - Math.log(rootPartials[patternIndexOffset + oldState]);
         		
 
         return delta;

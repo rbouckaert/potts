@@ -20,8 +20,7 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 			  "specifies site specific root states instead of root frequencies. ", Validate.REQUIRED);
 
 	// private double [][] rootFrequenciesSequence;
-	private int [] rootFrequenciesSequence;
-	private int [] storedRootFrequenciesSequence;
+	private IntegerParameter rootFrequenciesSequence;
 	
 	private int siteCount, stateCount, categoryCount, patternCount;
 
@@ -45,8 +44,7 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 		
 		if (rootFrequenciesSequenceInput.get() != null) {
 			
-			rootFrequenciesSequence = new int[siteCount];
-			storedRootFrequenciesSequence = new int[siteCount];
+			rootFrequenciesSequence = rootFrequenciesSequenceInput.get();
 			
 			// sanity check
 			if (rootFrequenciesInput.get() != null) {
@@ -57,8 +55,8 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 			initRootFrequencies();
 			
 			// sanity check
-			if (siteCount != rootFrequenciesSequence.length) {
-				throw new IllegalArgumentException("root sequence length (" + rootFrequenciesSequence.length + ") differs from alignment length("+ siteCount + ")");
+			if (siteCount != rootFrequenciesSequence.getDimension()) {
+				throw new IllegalArgumentException("root sequence length (" + rootFrequenciesSequence.getDimension() + ") differs from alignment length("+ siteCount + ")");
 			}
 			
 			patternLogLikelihoods = new double[siteCount];
@@ -88,11 +86,6 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 			}
 			int newState = Randomizer.randomChoicePDF(probs);
 			seq.setValue(i, newState);
-		}
-		
-		Integer [] values = seq.getValues();
-		for (int i = 0; i < siteCount; i++) {
-			rootFrequenciesSequence[i] = values[i];
 		}
 	}
 
@@ -156,7 +149,7 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
         	int j = dataInput.get().getPatternIndex(k);
         	int v = j * stateCount;
             double sum = 0.0;
-            sum += rootpartials[v + rootFrequenciesSequence[k]];
+            sum += rootpartials[v + rootFrequenciesSequence.getValue(k)];
             patternLogLikelihoods[k] = Math.log(sum) + scaleFactor[j];
         }
 		calcLogP();
@@ -286,39 +279,48 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
                 if (node.isRoot()) {
                     // No parent this is the root of the beast.tree -
                     // calculate the pattern likelihoods
-
-                    final double[] proportions = m_siteModel.getCategoryProportions(node);
-                    likelihoodCore.integratePartials(node.getNr(), proportions, m_fRootPartials);
-
-                    if (getConstantPattern() != null) { // && !SiteModel.g_bUseOriginal) {
-                        proportionInvariant = m_siteModel.getProportionInvariant();
-                        // some portion of sites is invariant, so adjust root partials for this
-                        for (final int i : getConstantPattern()) {
-                            m_fRootPartials[i] += proportionInvariant;
-                        }
-                    }
-
-                    if (this.rootFrequenciesSequence != null) {
-                    	// use site specific root frequencies
-                    	calculateLogLikelihoods(m_fRootPartials, this.rootFrequenciesSequence, patternLogLikelihoods);
-                    } else {
-                    	double[] rootFrequencies = substitutionModel.getFrequencies();
-                    	if (rootFrequenciesInput.get() != null) {
-                    		rootFrequencies = rootFrequenciesInput.get().getFreqs();
-                    	}
-                    	likelihoodCore.calculateLogLikelihoods(m_fRootPartials, rootFrequencies, patternLogLikelihoods);
-                    }
+                	processRoot(node);
                 }
-
+            } else if (node.isRoot() && node.isDirty() != Tree.IS_CLEAN) {
+            	processRoot(node);
             }
         }
         return update;
     } // traverse
 	
 
+	private void processRoot(Node node) {
+        final double[] proportions = m_siteModel.getCategoryProportions(node);
+        likelihoodCore.integratePartials(node.getNr(), proportions, m_fRootPartials);
+
+        if (getConstantPattern() != null) { // && !SiteModel.g_bUseOriginal) {
+            proportionInvariant = m_siteModel.getProportionInvariant();
+            // some portion of sites is invariant, so adjust root partials for this
+            for (final int i : getConstantPattern()) {
+                m_fRootPartials[i] += proportionInvariant;
+            }
+        }
+
+        if (this.rootFrequenciesSequence != null) {
+        	// use site specific root frequencies
+    		Integer [] values = rootFrequenciesSequenceInput.get().getValues();
+        	double[] rootFrequencies = substitutionModel.getFrequencies();
+        	calculateLogLikelihoods(m_fRootPartials, values, rootFrequencies, patternLogLikelihoods);
+        } else {
+        	double[] rootFrequencies = substitutionModel.getFrequencies();
+        	if (rootFrequenciesInput.get() != null) {
+        		rootFrequencies = rootFrequenciesInput.get().getFreqs();
+        	}
+        	likelihoodCore.calculateLogLikelihoods(m_fRootPartials, rootFrequencies, patternLogLikelihoods);
+        }
+	}
+
+
+
 	private void calculateLogLikelihoods(
 			double[] partials, 
-			int[] rootFrequencies,
+			Integer[] rootFrequenciesStates,
+			double[] rootFrequenciesx,
 			double[] outLogLikelihoods) {
 
 		Alignment data = dataInput.get();
@@ -335,7 +337,9 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
             for (int k = 0; k < siteCount; k++) {
                 double sum = 0.0;
                 int i = data.getPatternIndex(k);
-                sum += partials[stateCount * i + rootFrequencies[k]];
+                int state = rootFrequenciesStates[k];
+                // sum += partials[stateCount * i + state] * rootFrequenciesx[state];
+                sum += partials[stateCount * i + state];
                 outLogLikelihoods[k] = Math.log(sum) + getLikelihoodCore().getLogScalingFactor(i);
             }
 //        }
@@ -344,17 +348,11 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 	
 	@Override
 	public void store() {
-		System.arraycopy(rootFrequenciesSequence, 0, storedRootFrequenciesSequence, 0, siteCount);
-		
 		super.store();
 	}
 	
 	@Override
 	public void restore() {
-		int [] tmp = storedRootFrequenciesSequence;
-		storedRootFrequenciesSequence = rootFrequenciesSequence;
-		rootFrequenciesSequence = tmp;
-		
 		super.restore();
 	}
 
@@ -362,8 +360,9 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 	@Override
 	protected boolean requiresRecalculation() {
 		boolean isDirty = super.requiresRecalculation();
-		if (rootFrequenciesSequenceInput.get().isDirtyCalculation()) {
-			initRootFrequencies();
+		if (rootFrequenciesSequenceInput.get().somethingIsDirty()) {
+			// initRootFrequencies();
+			treeInput.get().getRoot().makeDirty(Tree.IS_DIRTY);
 			isDirty = true;
 		}
 		return isDirty;

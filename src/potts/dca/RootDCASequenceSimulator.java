@@ -37,6 +37,9 @@ public class RootDCASequenceSimulator extends Runnable {
 	final public Input<Integer> stepCountInput = new Input<>("stepCount", "number of times each site is resampled when sampling sequences conditioned on parent or parents and children", 100);
 	final public Input<Integer> resampleCountInput = new Input<>("resampleCount", "number of times each all sites in the alignment are resampled", 1000);
 
+	final public Input<Integer> repeatsInput = new Input<>("repeats", "number of times the sequence is sampled for a taxon."
+			+ "The total sequence length equals repeast times sequence lenght in DCA", 1);
+
 	final public Input<Long> seedInput = new Input<>("seed", "random number seed, if not specified, take default seed (time dependent)");
 
 	final public Input<Double> temperatureInput = new Input<>("temperature", "temperature balancing the effect of Potts model Pt and substitution model Ps. "
@@ -97,12 +100,20 @@ public class RootDCASequenceSimulator extends Runnable {
 					path = path.substring(0, k) + (i<100?"0":"") + (i<10?"0":"") + i + path.substring(k+1);
 				}
 				
-				DCASequenceSimulator.toFasta(alignment, path, tree, dataType);
+				DCASequenceSimulator.toFasta(alignment, path, tree, dataType, false);
+				for (int k = 1; k < repeatsInput.get(); k++) {
+					alignment = simulateAlignment(dca, tree, model);
+					DCASequenceSimulator.toFasta(alignment, path, tree, dataType, true);
+				}
 			}
 		} else {
 			Tree tree =  trees.get(0);
 			int [][] alignment = simulateAlignment(dca, tree, model);
-			DCASequenceSimulator.toFasta(alignment, outputInput.get().getPath(), tree, dataType);
+			DCASequenceSimulator.toFasta(alignment,  outputInput.get().getPath(), tree, dataType, false);
+			for (int k = 1; k < repeatsInput.get(); k++) {
+				alignment = simulateAlignment(dca, tree, model);
+				DCASequenceSimulator.toFasta(alignment,  outputInput.get().getPath(), tree, dataType, true);
+			}
 		}
 		
 		long end = System.currentTimeMillis();
@@ -278,16 +289,16 @@ public class RootDCASequenceSimulator extends Runnable {
 			double [] matrix = matrices[node.getNr()];
 			int [] parentseq = alignment[node.getParent().getNr()];
             double [] probs = new double[dataStateCount];
-			for (int step = 0; step < stepCount; step++) {
+			//for (int step = 0; step < stepCount; step++) {
 	            // Try to mutate every site once (Standard sweep)
-	            for (int i = 0; i < dca.siteCount; i++) {
-	                int parentState = parentseq[i];
-	                System.arraycopy(matrix, parentState * dataStateCount, probs, 0, dataStateCount);
-	                
-	                int newState = Randomizer.randomChoicePDF(probs);
-	                seq[i] = newState; // Accept mutation
-	            }
-	        }
+            for (int i = 0; i < dca.siteCount; i++) {
+                int parentState = parentseq[i];
+                System.arraycopy(matrix, parentState * dataStateCount, probs, 0, dataStateCount);
+                
+                int newState = Randomizer.randomChoicePDF(probs);
+                seq[i] = newState; // Accept mutation
+            }
+	        //}
 		}
 			
 		if (!node.isLeaf()) {
@@ -295,7 +306,7 @@ public class RootDCASequenceSimulator extends Runnable {
 				traverseDown(alignment, dca, child, matrices);
 			}
 		} else {
- 			resampleLeaf(alignment, dca, node, matrices);
+ 			// resampleLeaf(alignment, dca, node, matrices);
 		}
 	}
 	

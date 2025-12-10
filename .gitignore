@@ -23,3 +23,12 @@
 hs_err_pid*
 replay_pid*
 /build/
+/beast-source/
+/build-beast/
+/release/
+*.log
+*.trees
+*.state
+.classpath
+.project
+tmp.clipboard

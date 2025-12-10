@@ -2,6 +2,7 @@ package potts.dca;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.List;
 
@@ -286,8 +287,12 @@ public class DCASequenceSimulator extends Runnable {
     }    
     
 	static public void toFasta(int[][] alignment, String path, Tree tree, DataType dataType) throws FileNotFoundException {
+		toFasta(alignment, path, tree, dataType, false);
+	}
+	
+	static public void toFasta(int[][] alignment, String path, Tree tree, DataType dataType, boolean append) throws FileNotFoundException {
 		Log.warning("Output written to " + path);
-		PrintStream out = new PrintStream(path);
+		PrintStream out = new PrintStream(new FileOutputStream(path, append));
 		Node [] nodes = tree.getNodesAsArray();
 		for (int i = 0; i < tree.getLeafNodeCount(); i++) {
 			out.print(">");
