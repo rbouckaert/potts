@@ -347,6 +347,20 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 
 	
 	@Override
+    public double[] getRootPartials() {
+		if (beagle != null) {
+    		if (m_fRootPartials == null) {
+    			m_fRootPartials = new double[siteCount * stateCount];
+    		}
+    		Node root = treeInput.get().getRoot();
+            int rootIndex = beagle.getPartialBufferHelper().getOffsetIndex(root.getNr());
+    		beagle.getBeagle().getPartials(rootIndex, 0, m_fRootPartials);
+    	}
+		return m_fRootPartials.clone();
+    }
+
+	
+	@Override
 	public void store() {
 		super.store();
 	}
