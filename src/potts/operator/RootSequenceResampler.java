@@ -68,11 +68,7 @@ public class RootSequenceResampler extends Operator {
 			int site = Randomizer.nextInt(values.length);
 			int oldState = seq[site];
 			for (int newState = 0; newState < stateCount; newState++) {
-				if (oldState == newState) {
-					probs[newState] = 0;
-				} else {
-					probs[newState] = computeDeltaHamiltonian(dca, seq, site, oldState, newState, rootPartials, freqs);
-				}
+				probs[newState] = computeDeltaHamiltonian(dca, seq, site, oldState, newState, rootPartials, freqs);
 			}
 			
 			// find max
@@ -97,8 +93,7 @@ public class RootSequenceResampler extends Operator {
 			sequence.setValue(i, seq[i]);
 		}
 		
-		//return 0;
-		return Double.POSITIVE_INFINITY;
+		return 0;
 	}
 
 	
