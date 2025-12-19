@@ -81,11 +81,15 @@ public class RootSequenceResampler extends Operator {
 			for (int k = 0; k < stateCount; k++) {
 				probs[k] = Math.exp(probs[k] - max);
 			}
-			
-			int newState = Randomizer.randomChoicePDF(probs);
-			//int newState = Randomizer.randomChoicePDF(freqs);
-			//int newState = Randomizer.nextInt(freqs.length);
-            seq[site] = newState;
+			try {
+				int newState = Randomizer.randomChoicePDF(probs);
+				//int newState = Randomizer.randomChoicePDF(freqs);
+				//int newState = Randomizer.nextInt(freqs.length);
+				seq[site] = newState;
+			} catch (Error e) {
+				int newState = Randomizer.nextInt(freqs.length);
+				seq[site] = newState;
+			}
 		}
 		
 		

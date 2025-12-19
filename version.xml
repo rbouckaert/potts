@@ -15,6 +15,7 @@
                 <provider classname="potts.likelihood.PottsSequenceLikelihood"/>
                 
                 <provider classname="potts.operator.RootSequenceResampler"/>
+                <provider classname="potts.operator.RootHeightAndSequenceResampler"/>
     	</service>
             
 </package>
