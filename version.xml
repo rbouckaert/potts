@@ -10,6 +10,7 @@
                 <provider classname="potts.dca.AnnealedImportanceSampling"/>
                 <provider classname="potts.dca.TrainDCA"/>
                 <provider classname="potts.dca.DCAFromFile"/>
+                <provider classname="potts.dca.SimulatedDCAAlignment"/>
 
                 <provider classname="potts.likelihood.TreeLikelihoodWithRootStates"/>
                 <provider classname="potts.likelihood.PottsSequenceLikelihood"/>
