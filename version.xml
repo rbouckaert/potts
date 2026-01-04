@@ -16,6 +16,7 @@
                 
                 <provider classname="potts.operator.RootSequenceResampler"/>
                 <provider classname="potts.operator.RootHeightAndSequenceResampler"/>
+                <provider classname="potts.operator.SimpleRootOperator"/>
     	</service>
             
 </package>

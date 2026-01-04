@@ -40,7 +40,11 @@ public class MAPTest {
 		
 		for (int step = 0; step < stepCount; step++) {
             // Try to mutate every site once (Standard sweep)
-            for (int i = 0; i < dca.getSiteCount(); i++) {
+            for (int j = 0; j < dca.getSiteCount(); j++) {
+            	int i = Randomizer.nextInt(dca.getSiteCount());
+//            	i = j;
+//            }
+//            for (int i = 0; i < dca.getSiteCount(); i++) {
                 int oldState = seq[i];
                 int newState = Randomizer.nextInt(stateCount);
                 
@@ -84,6 +88,8 @@ public class MAPTest {
             }
         }
 		
+		if (true) return maxLogP;
+
 		sumLogP /= sumCount;
 		if (true) {
 			return sumLogP;

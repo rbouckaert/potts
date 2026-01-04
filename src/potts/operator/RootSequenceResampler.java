@@ -62,10 +62,12 @@ public class RootSequenceResampler extends Operator {
 		
 		double [] freqs = likelihood.getSubstitutionModel().getFrequencies();
 
-//totalStepCount = 1;
+totalStepCount = values.length;
 
+		double logHR = 0;
 		for (int i = 0; i < totalStepCount; i++) {
 			int site = Randomizer.nextInt(values.length);
+			site = i;
 			int oldState = seq[site];
 			for (int newState = 0; newState < stateCount; newState++) {
 				probs[newState] = computeDeltaHamiltonian(dca, seq, site, oldState, newState, rootPartials, freqs);
@@ -73,8 +75,12 @@ public class RootSequenceResampler extends Operator {
 			
 			// find max
 			double max = probs[0];
-			for (double d : probs) {
-				max = Math.max(d, max);
+			int iMax = 0;
+			for (int k = 0; k < stateCount; k++) {
+				if (probs[k] > max) {
+					iMax = k;
+					max = Math.max(probs[k], max);
+				}
 			}
 			
 			// to real space
@@ -85,7 +91,9 @@ public class RootSequenceResampler extends Operator {
 				int newState = Randomizer.randomChoicePDF(probs);
 				//int newState = Randomizer.randomChoicePDF(freqs);
 				//int newState = Randomizer.nextInt(freqs.length);
+				//int newState = iMax;
 				seq[site] = newState;
+				logHR += Math.log(probs[oldState]) - Math.log(probs[newState]);
 			} catch (Error e) {
 				int newState = Randomizer.nextInt(freqs.length);
 				seq[site] = newState;
@@ -97,7 +105,7 @@ public class RootSequenceResampler extends Operator {
 			sequence.setValue(i, seq[i]);
 		}
 		
-		return 0;
+		return logHR;
 	}
 
 	

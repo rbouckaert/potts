@@ -78,10 +78,20 @@ public class RootHeightAndSequenceResampler extends Operator {
 
 	@Override
 	public double proposal() {
+		Integer [] seq = sequence.getValues();
 
+		double logHR = 0;
+		
         final Node root = tree.getRoot();
         final double scale = getScaler(root.getNr(), root.getHeight());
         final double newHeight = root.getHeight() * scale;
+
+        logHR += Math.log(scale);
+
+		double [] oldRootPartials = likelihood.getRootPartials();
+		double [] oldProbs = new double[stateCount];
+		
+		
 
         if (newHeight < Math.max(root.getLeft().getHeight(), root.getRight().getHeight())) {
             return Double.NEGATIVE_INFINITY;
@@ -92,58 +102,95 @@ public class RootHeightAndSequenceResampler extends Operator {
         likelihood.calculateLogP();
 		
 		
-		Integer [] values = sequence.getValues();
-		int [] seq = new int[values.length];
-		for (int i = 0; i < seq.length; i++) {
-			seq[i] = values[i];
-		}
 		
-		double [] rootPartials = likelihood.getRootPartials();
-		double [] probs = new double[stateCount];
+		double [] newRootPartials = likelihood.getRootPartials();
+		double [] newProbs = new double[stateCount];
 		
 		
 		double [] freqs = likelihood.getSubstitutionModel().getFrequencies();
 
 //totalStepCount = 1;
 
-		for (int i = 0; i < totalStepCount; i++) {
-			int site = Randomizer.nextInt(values.length);
+		for (int site = 0; site < dca.getSiteCount(); site++) {
 			int oldState = seq[site];
-			for (int newState = 0; newState < stateCount; newState++) {
-//				if (oldState == newState) {
-//					probs[newState] = 0;
-//				} else {
-					probs[newState] = computeDeltaHamiltonian(dca, seq, site, oldState, newState, rootPartials, freqs);
-//				}
+//			for (int newState = 0; newState < stateCount; newState++) {
+//				probs[newState] = computeDeltaHamiltonian(dca, seq, site, oldState, newState, rootPartials, freqs);
+//			}
+//			
+//			// find max
+//			double max = probs[0];
+//			for (double d : probs) {
+//				max = Math.max(d, max);
+//			}
+//			
+//			// from log to real space
+//			for (int k = 0; k < stateCount; k++) {
+//				probs[k] = Math.exp(probs[k] - max);
+//			}
+//
+//			// check for numerical instability
+//			double sum = 0;
+//			for (double d : probs) {
+//				sum += d;
+//			}
+			double sum = getProbsAtSite(site, newRootPartials, newProbs);
+			if (sum <= 0) {
+				return Double.NEGATIVE_INFINITY;
 			}
 			
-			// find max
-			double max = probs[0];
-			for (double d : probs) {
-				max = Math.max(d, max);
-			}
-			
-			// to real space
-			for (int k = 0; k < stateCount; k++) {
-				probs[k] = Math.exp(probs[k] - max);
-			}
-			
-			int newState = Randomizer.randomChoicePDF(probs);
+			int newState = randomChoicePDF(newProbs, 1.0);
 			//int newState = Randomizer.randomChoicePDF(freqs);
 			//int newState = Randomizer.nextInt(freqs.length);
             seq[site] = newState;
+
+            getProbsAtSite(site, oldRootPartials, oldProbs);
+//			logHR += Math.log(oldProbs[oldState]) - Math.log(newProbs[newState]);
 		}
 		
 		
-		for (int i = 0; i < values.length; i++) {
+		for (int i = 0; i < seq.length; i++) {
 			sequence.setValue(i, seq[i]);
 		}
+		
+		if (Double.isNaN(logHR)) {
+			return Double.NEGATIVE_INFINITY;
+		}
 
-        return Math.log(scale);
+        return logHR;
 	}
 
 	
-    private double computeDeltaHamiltonian(DCA dca, int[] seq, int site, int oldState, int newState, 
+    private int randomChoicePDF(double[] pdf, double sum) {
+
+        double U = Randomizer.nextDouble() * sum;
+        for (int i = 0; i < pdf.length; i++) {
+
+            U -= pdf[i];
+            if (U < 0.0) {
+                return i;
+            }
+
+        }
+        for (int i = 0; i < pdf.length; i++) {
+            System.err.println(i + "\t" + pdf[i]);
+        }
+        throw new Error("randomChoiceUnnormalized falls through -- negative components in input distribution?");
+	}
+
+	private double getProbsAtSite(int siteIndex, double[] rootPartials, double[] probs) {
+    	System.arraycopy(rootPartials, siteIndex * stateCount, probs, 0, stateCount);
+    	// normalise 
+    	double sum = 0;
+		for (int k = 0; k < stateCount; k++) {
+			sum += probs[k];
+		}    	
+		for (int k = 0; k < stateCount; k++) {
+			probs[k] /= sum;
+		}
+		return sum;
+	}
+
+	private double computeDeltaHamiltonian(DCA dca, int[] seq, int site, int oldState, int newState, 
     		double [] rootPartials, double [] freqs) {
         double delta =  (temperaturFactor > 0) ? 
         		temperaturFactor * DCASequenceSimulator.computeDeltaHamiltonian(dca, seq, site, oldState, newState)
