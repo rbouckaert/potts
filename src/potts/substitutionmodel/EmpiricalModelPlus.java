@@ -13,7 +13,7 @@ import potts.datatype.AminoacidPlus;
 
 public class EmpiricalModelPlus extends GeneralSubstitutionModel {
 
-	final public Input<EmpiricalSubstitutionModel> substModelInput = new Input<>("substmodel", "empirical subsitution model for aminoacids", new WAG());
+	final public Input<EmpiricalSubstitutionModel> substModelInput = new Input<>("substModel", "empirical subsitution model for aminoacids", new WAG());
 	
 	private EmpiricalSubstitutionModel model;
 	
