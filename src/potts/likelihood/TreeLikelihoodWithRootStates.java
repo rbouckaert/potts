@@ -80,11 +80,15 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
 		seq.setDimension(siteCount);
 		for (int i = 0; i < siteCount; i++) {
 			int [] pattern = data.getPattern(data.getPatternIndex(i));
-			double [] probs = new double[stateCount+1];
+			double [] probs = new double[stateCount];
+			int sum = 0;
 			for (int k : pattern) {
-				probs[k]++;
+				if (k < stateCount) {
+					probs[k]++;
+					sum++;
+				}
 			}
-			int newState = Randomizer.randomChoicePDF(probs);
+			int newState = (sum > 0) ? Randomizer.randomChoicePDF(probs) : Randomizer.nextInt(stateCount);
 			seq.setValue(i, newState);
 		}
 	}

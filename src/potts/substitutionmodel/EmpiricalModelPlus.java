@@ -1,8 +1,11 @@
 package potts.substitutionmodel;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 
+import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.core.Input.Validate;
 import beast.base.evolution.datatype.DataType;
 import beast.base.evolution.substitutionmodel.EigenDecomposition;
 import beast.base.evolution.substitutionmodel.EmpiricalSubstitutionModel;
@@ -11,6 +14,10 @@ import beast.base.evolution.substitutionmodel.WAG;
 import beast.base.evolution.tree.Node;
 import potts.datatype.AminoacidPlus;
 
+
+@Description("Model for explicitly representing a gap state. "
+		+ "A constant rate in and out of the gap state is assumed. "
+		+ "For the other states, an empirical substitution model for amino acids is assumed.")
 public class EmpiricalModelPlus extends GeneralSubstitutionModel {
 
 	final public Input<EmpiricalSubstitutionModel> substModelInput = new Input<>("substModel", "empirical subsitution model for aminoacids", new WAG());
@@ -19,6 +26,13 @@ public class EmpiricalModelPlus extends GeneralSubstitutionModel {
 	
 	/** rate mutating into or out of a GAP **/
 	final static double GAP_RATE = 1.0;
+	double GAP_PROPORTION = 1.0/21.0;
+	
+	
+	public EmpiricalModelPlus() {
+		ratesInput.setRule(Validate.OPTIONAL);
+		frequenciesInput.setRule(Validate.OPTIONAL);
+	}
 	
 	@Override
 	public void initAndValidate() {
@@ -39,13 +53,36 @@ public class EmpiricalModelPlus extends GeneralSubstitutionModel {
     @Override
     public void setupRelativeRates() {
         double[] empiricalRates = model.getEmpericalRateValues();
-        int states = 21;
-        for (int i = 0; i < states-1; i++) {
-        	System.arraycopy(empiricalRates, i * (nrOfStates-2), relativeRates, i * (nrOfStates-1), (nrOfStates-2));
-        	empiricalRates[i * (nrOfStates-1) + nrOfStates - 1] = GAP_RATE;
+        if (empiricalRates.length != (nrOfStates-2)*(nrOfStates-1) || relativeRates.length != (nrOfStates-1)*nrOfStates) {
+        	int h = 3;
+        	h++;
         }
+        Arrays.fill(relativeRates, 0);
+        for (int i = 0; i < nrOfStates-1; i++) {
+        	System.arraycopy(empiricalRates, i * (nrOfStates-2), relativeRates, i * (nrOfStates-1), nrOfStates-2);
+        	relativeRates[i * (nrOfStates-1) + nrOfStates - 2] = GAP_RATE;
+        }
+        
+        int offset = (nrOfStates-1)*(nrOfStates-1);
+        for (int i = 0; i < nrOfStates-1; i++) {
+        	relativeRates[offset++] = GAP_RATE;
+        }
+        
     }
 
+    
+    @Override
+    public double[] getFrequencies() {
+    	double [] empiricalFreqs = model.getEmpiricalFrequencies();
+    	double sum = 1.0 + GAP_PROPORTION;
+    	double [] freqs = new double[nrOfStates];
+    	for (int i = 0; i < nrOfStates-1; i++) {
+    		freqs[i] = empiricalFreqs[i] / sum;
+    	}
+    	freqs[nrOfStates-1] = GAP_PROPORTION / sum;
+    	return freqs;
+    }
+    
     @Override
     public void setupRateMatrix() {
         double[] freqs = getFrequencies();
@@ -114,8 +151,7 @@ public class EmpiricalModelPlus extends GeneralSubstitutionModel {
 	
 	@Override
 	public EigenDecomposition getEigenDecomposition(Node node) {
-		// TODO Auto-generated method stub
-		return null;
+		return eigenDecomposition;
 	}
 
 	@Override

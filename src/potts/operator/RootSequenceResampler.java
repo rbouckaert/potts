@@ -87,8 +87,12 @@ totalStepCount = values.length;
 			for (int k = 0; k < stateCount; k++) {
 				probs[k] = Math.exp(probs[k] - max);
 			}
+			double sum = 0;
+			for (double d : probs) {
+				sum += d;
+			}
 			try {
-				int newState = Randomizer.randomChoicePDF(probs);
+				int newState = (sum > 0) ? Randomizer.randomChoicePDF(probs) : Randomizer.nextInt(freqs.length);
 				//int newState = Randomizer.randomChoicePDF(freqs);
 				//int newState = Randomizer.nextInt(freqs.length);
 				//int newState = iMax;

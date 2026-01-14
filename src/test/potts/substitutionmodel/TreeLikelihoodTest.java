@@ -73,16 +73,17 @@ public class TreeLikelihoodTest  {
         // Set up WAG model
         WAG wag = new WAG();
         wag.initAndValidate();
-        aminoacidModelTest(wag, -338.6388785157248);
-
+        aminoacidModelTest(wag, -378.8259637262415);
     }
+
+
 
     @Test
     public void testAminoAcidLikelihoodJTT() throws Exception {
         // JTT
         JTT jtt = new JTT();
         jtt.initAndValidate();
-        aminoacidModelTest(jtt, -338.80761792179726);
+        aminoacidModelTest(jtt, -379.24972167046724);
 
     }
 
@@ -91,7 +92,7 @@ public class TreeLikelihoodTest  {
         // Blosum62
         Blosum62 blosum62 = new Blosum62();
         blosum62.initAndValidate();
-        aminoacidModelTest(blosum62, -345.3825963600176);
+        aminoacidModelTest(blosum62, -383.9021300914031);
 
     }
 
@@ -100,7 +101,7 @@ public class TreeLikelihoodTest  {
         // Dayhoff
         Dayhoff dayhoff = new Dayhoff();
         dayhoff.initAndValidate();
-        aminoacidModelTest(dayhoff, -340.6149187667345);
+        aminoacidModelTest(dayhoff, -383.29937320519474);
     }
 
     @Test
@@ -108,7 +109,7 @@ public class TreeLikelihoodTest  {
         // cpRev
         CPREV cpRev = new CPREV();
         cpRev.initAndValidate();
-        aminoacidModelTest(cpRev, -348.71458467304154);
+        aminoacidModelTest(cpRev, -390.06748619568515);
     }
 
     @Test
@@ -116,7 +117,7 @@ public class TreeLikelihoodTest  {
         // MTRev
         MTREV mtRev = new MTREV();
         mtRev.initAndValidate();
-        aminoacidModelTest(mtRev, -369.4791633617842);
+        aminoacidModelTest(mtRev, -401.1500209849424);
 
     }
 
@@ -132,10 +133,12 @@ public class TreeLikelihoodTest  {
 
         Alignment data = getAminoAcidPlusAlignment();
 
-        Tree tree = BEASTTestCase.getTree(data, "((t1:0.5,t2:0.5):0.5,t3:1.0):0.0;");
+        Tree tree = BEASTTestCase.getAminoAcidTree(data);
 
     	SubstitutionModel.Base substModel = new EmpiricalModelPlus();
-    	substModel.initByName("substModel", new WAG());
+    	WAG wag = new WAG();
+    	wag.initAndValidate();
+    	substModel.initByName("substModel", wag);
     	
         SiteModel siteModel = new SiteModel();
         siteModel.initByName("mutationRate", "1.0", "gammaCategoryCount", 1, "substModel", substModel);
@@ -150,6 +153,7 @@ public class TreeLikelihoodTest  {
         double logLBeagle = likelihoodBeagle.calculateLogP();
 
         assertEquals(logLBeagle, logLnoBeagle, BEASTTestCase.PRECISION);
+        assertEquals(logLBeagle, -378.8259637262415, BEASTTestCase.PRECISION);
     }
     
 } // class TreeLikelihoodTest
