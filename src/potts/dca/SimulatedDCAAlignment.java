@@ -1,5 +1,9 @@
 package potts.dca;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+
 import beast.base.core.BEASTInterface;
 import beast.base.core.Description;
 import beast.base.core.Input;
@@ -17,6 +21,7 @@ import beast.base.evolution.substitutionmodel.SubstitutionModel;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
 import beast.base.util.Randomizer;
+import potts.datatype.AminoacidPlus;
 
 @Description("Simulate alignment on a tree using the Potts model for root sequence")
 public class SimulatedDCAAlignment extends Alignment {
@@ -43,8 +48,6 @@ public class SimulatedDCAAlignment extends Alignment {
 	int sequenceLength, categoryCount, stateCount;
 	Tree tree;
 	
-	DataType dataType = new Aminoacid();
-
     /**
      * site model used for generating samples *
      */
@@ -66,7 +69,12 @@ public class SimulatedDCAAlignment extends Alignment {
 			((BEASTInterface)branchRateModel).initAndValidate();
 		}
 		
-
+        if (userDataTypeInput.get() != null) {
+            m_dataType = userDataTypeInput.get();
+        } else {
+            initDataType();
+        }
+				
         Long customSeed = localSeedInput.get();
         long originalSeed = Randomizer.getSeed();
         long seedToUse = customSeed != null ? customSeed : originalSeed;
@@ -86,7 +94,7 @@ public class SimulatedDCAAlignment extends Alignment {
         } finally {
             Randomizer.setSeed(originalSeed);
         }
-		dataTypeInput.setValue(dataType.toString(), this);
+		dataTypeInput.setValue(m_dataType.toString(), this);
 		super.initAndValidate();
 	}
 
@@ -100,11 +108,15 @@ public class SimulatedDCAAlignment extends Alignment {
 		DCA dca = dcaInput.get();
 		sequenceLength = dca.getSiteCount();
 		
-		
-		dataType = dca.stateCount == 21 ? new Aminoacid() : new Nucleotide();
+
+		if (m_dataType == null) {
+			m_dataType = dca.stateCount == 21 ? new Aminoacid() : new Nucleotide();
+		}
 		SubstitutionModel substModel = siteModel.getSubstitutionModel();
-		if (dca.stateCount -1 != substModel.getStateCount()) {
+		if (dca.stateCount -1 != substModel.getStateCount() && !(m_dataType instanceof AminoacidPlus)) {
 			throw new IllegalArgumentException("DCA state count should be 1 + model state count");
+		} else if (dca.stateCount != substModel.getStateCount() && m_dataType instanceof AminoacidPlus) {
+			throw new IllegalArgumentException("DCA state count should equal model state count");
 		}
 		
         Node root = tree.getRoot();
@@ -116,6 +128,18 @@ public class SimulatedDCAAlignment extends Alignment {
 
         int [] seq = new int[sequenceLength];
 		DCASequenceSimulator.sampleRootSequence(seq, dca, rootStepCount, dca.stateCount);
+		
+		try {
+			String fileName = "rootseq" + Randomizer.getSeed() + ".txt";
+			PrintStream out = new PrintStream(new File(fileName));
+			for (int i = 0; i < seq.length; i++) {
+				out.print(seq[i]);
+				out.print("\t");
+			}
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
         traverse(root, seq, category);
 	}
 	
@@ -158,7 +182,7 @@ public class SimulatedDCAAlignment extends Alignment {
      * @return Sequence
      */
     Sequence intArray2Sequence(int[] seq, Node node) {
-        String seqString = dataType.encodingToString(seq);
+        String seqString = m_dataType.encodingToString(seq);
         
         return new Sequence(node.getID(), seqString);
     } // intArray2Sequence

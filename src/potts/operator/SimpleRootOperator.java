@@ -7,6 +7,7 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.inference.Operator;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.util.Randomizer;
+import potts.datatype.AminoacidPlus;
 import potts.dca.DCA;
 import potts.likelihood.PottsSequenceLikelihood;
 import potts.likelihood.TreeLikelihoodWithRootStates;
@@ -39,7 +40,8 @@ public class SimpleRootOperator extends Operator {
 		sequence = sequenceInput.get();
 //		likelihood = likelihoodInput.get();
 //		data = likelihood.dataInput.get();
-		stateCount = dca.getStateCount() - 1;
+		boolean seperateGapState = psl.dataInput.get().getDataType() instanceof AminoacidPlus;
+		stateCount = dca.getStateCount() - (seperateGapState ? 0 : 1);
 	}
 
 	@Override

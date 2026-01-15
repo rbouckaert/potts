@@ -11,6 +11,9 @@
                 <provider classname="potts.dca.TrainDCA"/>
                 <provider classname="potts.dca.DCAFromFile"/>
                 <provider classname="potts.dca.SimulatedDCAAlignment"/>
+                
+                <provider classname="potts.datatype.AminoacidPlus"/>
+                <provider classname="potts.substitutionmodel.EmpiricalModelPlus"/>
 
                 <provider classname="potts.likelihood.TreeLikelihoodWithRootStates"/>
                 <provider classname="potts.likelihood.PottsSequenceLikelihood"/>

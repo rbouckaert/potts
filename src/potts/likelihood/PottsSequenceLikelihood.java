@@ -7,9 +7,11 @@ import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Input.Validate;
 import beast.base.evolution.alignment.Alignment;
+import beast.base.evolution.datatype.DataType;
 import beast.base.inference.Distribution;
 import beast.base.inference.State;
 import beast.base.inference.parameter.IntegerParameter;
+import potts.datatype.AminoacidPlus;
 import potts.dca.DCA;
 
 @Description("Contribution of Potts model for one sequence")
@@ -32,6 +34,7 @@ public class PottsSequenceLikelihood extends Distribution {
 	IntegerParameter sequence;
 	int siteCount, stateCount;
 	double temperatureFactor;
+	DataType dataType;
 
 	@Override
 	public void initAndValidate() {
@@ -40,12 +43,17 @@ public class PottsSequenceLikelihood extends Distribution {
 		stateCount = dataInput.get().getMaxStateCount();
 
 		dca = dcaInput.get();
+		dataType = dataInput.get().getDataType();
 
 		if (dca.getSiteCount() != siteCount) {
 			throw new IllegalArgumentException("Site count of DCA (" + dca.getSiteCount() + ") and alignment ("
 					+ siteCount + ") should match");
 		}
-		if (dca.getStateCount() != stateCount + 1) {
+		
+		if (dca.getStateCount() -1 != stateCount && !(dataType instanceof AminoacidPlus)) {
+			throw new IllegalArgumentException("State count of DCA (" + dca.getStateCount() + ") and alignment ("
+					+ stateCount + ") should match");
+		} else if (dca.getStateCount() != stateCount && dataType instanceof AminoacidPlus) {
 			throw new IllegalArgumentException("State count of DCA (" + dca.getStateCount() + ") and alignment ("
 					+ stateCount + ") should match");
 		}

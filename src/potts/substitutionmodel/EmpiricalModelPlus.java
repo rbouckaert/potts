@@ -149,10 +149,10 @@ public class EmpiricalModelPlus extends GeneralSubstitutionModel {
         return rates;
     }
 	
-	@Override
-	public EigenDecomposition getEigenDecomposition(Node node) {
-		return eigenDecomposition;
-	}
+//	@Override
+//	public EigenDecomposition getEigenDecomposition(Node node) {
+//		return eigenDecomposition;
+//	}
 
 	@Override
 	public boolean canHandleDataType(DataType dataType) {

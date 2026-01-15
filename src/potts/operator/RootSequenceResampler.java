@@ -7,6 +7,7 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.inference.Operator;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.util.Randomizer;
+import potts.datatype.AminoacidPlus;
 import potts.dca.DCA;
 import potts.dca.DCASequenceSimulator;
 import potts.likelihood.PottsSequenceLikelihood;
@@ -44,8 +45,9 @@ public class RootSequenceResampler extends Operator {
 		likelihood = likelihoodInput.get();
 		data = likelihood.dataInput.get();
 		totalStepCount = stepCountInput.get() * sequence.getDimension();
-		stateCount = dca.getStateCount() - 1;
-		
+
+		boolean seperateGapState = data.getDataType() instanceof AminoacidPlus;
+		stateCount = dca.getStateCount() - (seperateGapState ? 0 : 1);
 	}
 
 	@Override
