@@ -34,6 +34,7 @@ public class TrainDCA extends Runnable {
 
 	@Override
 	public void run() throws Exception {
+		long start = System.currentTimeMillis();
 		// load alignment
         Log.info("Loading file " + inputInput.get().getPath());
 		Alignment data = getAlignment(inputInput.get());
@@ -60,7 +61,8 @@ public class TrainDCA extends Runnable {
         PrintStream out = new PrintStream(outputInput.get().getPath());
         out.print(dca.toJSON());
         out.close();
-        Log.warning("Done");
+		long end = System.currentTimeMillis();
+        Log.warning("Done in " + (end-start)/1000 + " seconds");
 	}
 
 	

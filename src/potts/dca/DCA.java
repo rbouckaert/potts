@@ -112,4 +112,90 @@ public class DCA extends BEASTObject {
         }    	
     }
     
+    // --- Helper to extract contact scores (Frobenius Norm) ---
+    public double getContactScore(int i, int j) {
+        if (i >= j) return 0.0;
+        double sumSq = 0.0;
+        // In full DCA, we would perform Average Product Correction (APC) here.
+        // This is the raw interaction strength.
+        for (int a = 0; a < stateCount; a++) {
+            for (int b = 0; b < stateCount; b++) {
+                // Often we subtract the row/col means (gauge invariance), 
+                // but raw J norm is a decent first approx.
+                double val = J[i][j][a][b];
+                sumSq += val * val;
+            }
+        }
+        return Math.sqrt(sumSq);
+    }
+    
+    /**
+     * Converts the asymmetric parameters learned by plmDCA into 
+     * a symmetric Frobenius norm score (APC corrected usually).
+     */
+    public double[][] getContactScores() {
+        double[][] scores = new double[siteCount][siteCount];
+
+        // 1. Symmetrise and Compute Raw Frobenius Norm
+        // plmDCA learns J_ij (effect of j on i) and J_ji (effect of i on j) separately.
+        // We average them: J_final = (J_ij + J_ji) / 2
+        
+        double[] rowSums = new double[siteCount]; // For APC
+        double[] colSums = new double[siteCount];
+        double totalSum = 0.0;
+
+        for (int i = 0; i < siteCount; i++) {
+            for (int j = i + 1; j < siteCount; j++) {
+                double normSq = 0.0;
+
+                for (int a = 0; a < stateCount; a++) {
+                    for (int b = 0; b < stateCount; b++) {
+                        // Average the asymmetric couplings
+                        // J_asym[target][neighbour][target_aa][neighbour_aa]
+                        double val1 = J[i][j][b][a]; // predicting i using j
+                        double val2 = J[j][i][a][b]; // predicting j using i
+                        
+                        // Zero-sum gauge correction is usually applied here in production tools
+                        // For simplicity, we just average and square
+                        double avg = 0.5 * (val1 + val2);
+                        normSq += avg * avg;
+                    }
+                }
+                
+                double fn = Math.sqrt(normSq);
+                scores[i][j] = fn;
+                scores[j][i] = fn; // Symmetric
+                
+                rowSums[i] += fn;
+                colSums[j] += fn; // Symmetric so colSums == rowSums
+                totalSum += fn;
+            }
+        }
+
+        // 2. Average Product Correction (APC)
+        // APC_ij = Score_ij - (Score_i. * Score_.j) / Score_..
+        // This removes background phylogenetic noise.
+        
+        double avgTotal = totalSum / (siteCount * (siteCount - 1) / 2.0); // Mean score
+        
+        // Actually, the standard APC formula uses sums over the row/col (L-1)
+        for (int i = 0; i < siteCount; i++) {
+            rowSums[i] /= (siteCount - 1);
+        }
+
+        double[][] apcScores = new double[siteCount][siteCount];
+        double globalAvg = totalSum / (siteCount * siteCount); // Approx
+
+        for (int i = 0; i < siteCount; i++) {
+            for (int j = i + 1; j < siteCount; j++) {
+                double correction = (rowSums[i] * rowSums[j]) / globalAvg;
+                double val = scores[i][j] - correction;
+                apcScores[i][j] = val;
+                apcScores[j][i] = val;
+            }
+        }
+
+        return apcScores;
+    }
+
 }
