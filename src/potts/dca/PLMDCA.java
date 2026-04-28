@@ -1,15 +1,20 @@
 package potts.dca;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import beast.base.core.Log;
+import beast.base.evolution.alignment.Alignment;
 import beast.base.util.Randomizer;
 
 public class PLMDCA extends DCA {
 
-    private final double lambda; // L2 Regularization strength (e.g. 0.01)
+    private final double lambda; // L2 Regularisation strength (e.g. 0.01)
     
     // The Data
     private final int[][] msa;
@@ -263,19 +268,19 @@ public class PLMDCA extends DCA {
     }
 
     // --- Main for testing ---
-    public static void main(String[] args) {
+    // 1st argument: alignment file name
+    // 2nd argument: output json file name
+    public static void main(String[] args) throws FileNotFoundException {
     	
     	long start = System.currentTimeMillis();
+    	
         // Create dummy data
         int L = 50;
         int M = 500;
         int q = 21; // Simplified alphabet
-        double[] weights = new double[M];
-        Arrays.fill(weights, 1.0);
 
         // Fill random data
         int[][] mockData = new int[M][L];
-        
         // Create correlated data: Sites 0 and 1 are coupled (if 0 is A, 1 is A)
         for (int m = 0; m < M; m++) {
             for(int i=0; i < L; i++) {
@@ -293,12 +298,50 @@ public class PLMDCA extends DCA {
             }
         }
 
+        
+        // if argument is given, override with alignment
+    	if (args.length != 0) {
+    		// load alignment
+            Log.info("Loading file " + args[0]);
+    		Alignment data = TrainDCA.getAlignment(new File(args[0]));
+    		int stateCount = data.getMaxStateCount();
+    		int siteCount = data.getSiteCount();
+    		int seqCount = data.getTaxonCount();
+            
+            // convert BEAST alignment to int matrix
+            int [][] matrix = new int[seqCount][siteCount];
+            for(int i = 0; i < siteCount; i++) {
+            	int [] pattern = data.getPattern(data.getPatternIndex(i));
+            	for (int m = 0; m < seqCount; m++) {
+            		matrix[m][i] = pattern[m] >= 0 && pattern[m] < stateCount ? pattern[m] : stateCount; 
+                }
+            }
+            mockData = matrix;
+            L = siteCount;
+            M = seqCount;
+    	}
+    	
+        double[] weights = new double[M];
+        Arrays.fill(weights, 1.0);
+
+        
+
         PLMDCA plm = new PLMDCA(mockData, weights, q, 0.01);
         
         // Train
         // 100 iterations, Learning Rate 0.1
         plm.train(100, 0.1); 
 
+        
+        if (args.length > 1) {
+            // output results
+            Log.info("Output written to " + args[1]);
+            PrintStream out = new PrintStream(args[1]);
+            out.print(plm.toJSON());
+            out.close();
+
+        }
+        
         // Get Scores
         double[][] scores = plm.getContactScores();
         System.out.println("Top Score (0,1): " + scores[0][1]);

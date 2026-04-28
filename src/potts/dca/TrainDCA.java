@@ -66,7 +66,7 @@ public class TrainDCA extends Runnable {
 	}
 
 	
-	private static Alignment getAlignment(File file) {
+	static Alignment getAlignment(File file) {
         Set<String> importerClasses = Utils.loadService(AlignmentImporter.class);        
         for (String _class: importerClasses) {
         	try {
