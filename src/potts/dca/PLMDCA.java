@@ -12,6 +12,7 @@ import beast.base.core.Log;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.util.Randomizer;
 
+// Pseudo Likelihood Maximisation Direct Coupling Analysis
 public class PLMDCA extends DCA {
 
     private final double lambda; // L2 Regularisation strength (e.g. 0.01)
@@ -75,7 +76,7 @@ public class PLMDCA extends DCA {
      * Solves the local optimisation problem for a specific target site 'r'.
      * Maximises P(Sequence[r] | Sequence[all other sites])
      */
-    private void optimiseSite(int r, int iterations, double learningRate) {
+    private void optimiseSite(int site, int iterations, double learningRate) {
         // Local parameters for site r
         // fields[a] corresponds to h_r(a)
         double[] local_h = new double[stateCount];
@@ -103,7 +104,7 @@ public class PLMDCA extends DCA {
             // 2. Compute Gradient over all sequences
             for (int m = 0; m < sequenceCount; m++) {
                 int[] seq = msa[m];
-                int targetAA = seq[r]; // The true amino acid at site r
+                int targetAA = seq[site]; // The true amino acid at site r
                 double w = weights[m];
 
                 // A. Calculate Local Hamiltonian (Energy) for each possible AA at site r
@@ -114,7 +115,7 @@ public class PLMDCA extends DCA {
                     double energy = local_h[a];
                     
                     for (int j = 0; j < siteCount; j++) {
-                        if (r == j) continue;
+                        if (site == j) continue;
                         int neighbourAA = seq[j];
                         energy += local_J[j][neighbourAA][a];
                     }
@@ -149,7 +150,7 @@ public class PLMDCA extends DCA {
 
                 // Update Coupling Gradient
                 for (int j = 0; j < siteCount; j++) {
-                    if (r == j) continue;
+                    if (site == j) continue;
                     int neighbourAA = seq[j];
                     
                     for (int a = 0; a < stateCount; a++) {
@@ -159,7 +160,7 @@ public class PLMDCA extends DCA {
                 }
             } // End Sequence Loop
 
-            // 3. Apply L2 Regularization and Update Parameters
+            // 3. Apply L2 Regularisation and Update Parameters
             // Param_new = Param_old + LearningRate * (Gradient - 2*lambda*Param_old)
             
             // Normalise Gradient by M_eff (standard practice in DCA)
@@ -176,7 +177,7 @@ public class PLMDCA extends DCA {
 
             // Update J
             for (int j = 0; j < siteCount; j++) {
-                if (r == j) continue;
+                if (site == j) continue;
                 for (int b = 0; b < stateCount; b++) {
                     for (int a = 0; a < stateCount; a++) {
                         double reg = 2 * lambda * local_J[j][b][a];
@@ -191,11 +192,11 @@ public class PLMDCA extends DCA {
 
         // Store results in global arrays
         // Synchronised is not needed because each thread writes to a unique 'r' index
-        this.h[r] = local_h;
-        this.J[r] = local_J;
+        this.h[site] = local_h;
+        this.J[site] = local_J;
         
         // Progress indicator
-        if (r % 10 == 0) System.out.print(".");
+        if (site % 10 == 0) System.out.print(".");
     }
 
     /**
@@ -268,8 +269,8 @@ public class PLMDCA extends DCA {
     }
 
     // --- Main for testing ---
-    // 1st argument: alignment file name
-    // 2nd argument: output json file name
+    // if 1st argument supplied: alignment file name
+    // if 2nd argument supplied: output json file name
     public static void main(String[] args) throws FileNotFoundException {
     	
     	long start = System.currentTimeMillis();
@@ -278,6 +279,7 @@ public class PLMDCA extends DCA {
         int L = 50;
         int M = 500;
         int q = 21; // Simplified alphabet
+        Randomizer.setSeed(127);
 
         // Fill random data
         int[][] mockData = new int[M][L];
@@ -360,5 +362,9 @@ public class PLMDCA extends DCA {
     	long end = System.currentTimeMillis();
 
     	System.err.println("Done in " + (end-start) + " ms");
+    	
+    	PrintStream out = new PrintStream("/tmp/x.dca");
+    	out.println(plm.toJSON());
+    	out.close();
    }
 }

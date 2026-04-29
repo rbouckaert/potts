@@ -98,12 +98,14 @@ public class BoltzmannDCA extends DCA {
      * @param learningRate Step size for gradient ascent (e.g. 0.01)
      * @param regularisation L2 penalty weight (e.g. 0.001)
      */
+    int[][] msa;
     public BoltzmannDCA(int[][] msa, int stateCount, double learningRate, double regularisation) {
         this.sequenceCount = msa.length;
         this.siteCount = msa[0].length;
         this.stateCount = stateCount;
         this.eta = learningRate;
         this.lambda = regularisation;
+        this.msa = msa;
 
         // Initialise Parameters (starts at 0.0)
         this.h = new double[siteCount][stateCount];
@@ -117,6 +119,7 @@ public class BoltzmannDCA extends DCA {
 
         // 1. Calculate Observed Statistics from the MSA
         calculateStatistics(msa, this.fi_obs, this.fij_obs);
+        calculateStatistics(msa, this.fi_model, this.fij_model);
 
         // 2. Initialise MCMC Chains
         // In PCD, we often start the chains as clones of the real data
@@ -148,7 +151,7 @@ public class BoltzmannDCA extends DCA {
             updateParameters();
 
             // Optional: Logging
-            if (epoch % 100 == 0) {
+            if (epoch % 10 == 0) {
                 double diff = calculateAverageError();
                 System.out.printf("Epoch %d: Avg Error (Obs - Model) = %.6f\n", epoch, diff);
             }
@@ -369,10 +372,15 @@ public class BoltzmannDCA extends DCA {
         // In reality, you would parse a FASTA file here and map AAs to 0..20
         int numSeqs = 51;
         int len = 50;
+
+        numSeqs = 5;
+        len = 3;
         int states = 3; 
         
         int[][] mockData = new int[numSeqs][len];
         
+        
+        Randomizer.setSeed(127);
         // Create correlated data: Sites 0 and 1 are coupled (if 0 is A, 1 is A)
         for (int m = 0; m < numSeqs; m++) {
             for(int i=0; i<len; i++) {
@@ -397,12 +405,12 @@ public class BoltzmannDCA extends DCA {
         for(int i=0; i<len; i++) {
             for(int j=i+1; j<len; j++) {
                 double score = dca.getContactScore(i, j);
-                System.out.printf("Site %d - %d : %.4f\n", i, j, score);
+                System.out.printf("Site %d - %d : %.4f\n", i, j, score/2);
             }
         }
         
         Log.info("\nInferred Coupling Scores (Frobenius Norm) PCA corrected:");
-        double [][] scores = dca.getContactScores();
+        double [][] scores = dca.getContactScores(false);
         for (int i = 0; i < scores.length; i++) {
         	System.out.println(Arrays.toString(scores[i]));
         }

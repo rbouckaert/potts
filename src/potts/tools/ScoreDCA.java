@@ -17,7 +17,7 @@ public class ScoreDCA extends Runnable {
 	final public Input<File> dcaFileInput = new Input<>("fileName", "json file name containing DCA data", new File("[[none]]"));
 	final public Input<OutFile> outputInput = new Input<>("out", "text file name to print to, stdout if not specified", new OutFile("[[none]]"));
 	final public Input<OutFile> svgInput = new Input<>("svg", "svg file name to print heatmap to, ignored if not specified", new OutFile("[[none]]"));
-
+	final public Input<Boolean> correctForPCAInput = new Input<>("correctForPCA", "flag to indicate whether to apply Average Product Correction", false);
 	@Override
 	public void initAndValidate() {
 	}
@@ -45,7 +45,7 @@ public class ScoreDCA extends Runnable {
         
         Log.info("\nInferred Coupling Scores (Frobenius Norm) PCA corrected:");
         
-        double [][] scores = dca.getContactScores();
+        double [][] scores = dca.getContactScores(correctForPCAInput.get());
         for (int i = 0; i < scores.length; i++) {
         	out.println(Arrays.toString(scores[i]));
         }

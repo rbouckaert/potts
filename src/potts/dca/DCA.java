@@ -133,7 +133,7 @@ public class DCA extends BEASTObject {
      * Converts the asymmetric parameters learned by plmDCA into 
      * a symmetric Frobenius norm score (APC corrected usually).
      */
-    public double[][] getContactScores() {
+    public double[][] getContactScores(boolean correctForAPC) {
         double[][] scores = new double[siteCount][siteCount];
 
         // 1. Symmetrise and Compute Raw Frobenius Norm
@@ -172,6 +172,10 @@ public class DCA extends BEASTObject {
             }
         }
 
+        if (!correctForAPC) {
+        	return scores;
+        }
+        
         // 2. Average Product Correction (APC)
         // APC_ij = Score_ij - (Score_i. * Score_.j) / Score_..
         // This removes background phylogenetic noise.
