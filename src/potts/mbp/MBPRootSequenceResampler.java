@@ -10,7 +10,7 @@ import beast.base.util.Randomizer;
 import potts.likelihood.TreeLikelihoodWithRootStates;
 
 @Description("Gibbs sampler for root sequence in TreeLikelihoodWithRootStates")
-public class RootSequenceResampler extends Operator {
+public class MBPRootSequenceResampler extends Operator {
 
 	final public Input<IntegerParameter> sequence1Input = new Input<>("sequence1",
 			"specifies sequence states to calculated likelihood for", Validate.REQUIRED);
@@ -46,8 +46,19 @@ public class RootSequenceResampler extends Operator {
 		mbpPrior = mbpPriorInput.get();
 	}
 
+	
+	private boolean first = true;
+	
 	@Override
 	public double proposal() {
+		if (first) {
+			// skip first proposal in order to guarantee the 
+			// first logged rootsequences are the true value
+			// in a WCSS
+			first = false;
+			return Double.POSITIVE_INFINITY;
+		}
+		
 		boolean reverse = mbpPrior.reverseInput.get();
 		
 		int n = sequence1.getValues().length;

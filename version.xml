@@ -5,6 +5,7 @@
 <packageapp description="DCA trainer by Boltzmann machine" class="potts.dca.TrainDCA" args=""/>
 <packageapp description="DCA trainer by PLM" class="potts.dca.PLMDCA" args=""/>
 <packageapp description="Score a DCA and output SVG heatmap" class="potts.tools.ScoreDCA" args=""/>
+<packageapp description="convert file produced by github.com/anna-pa-m/adabmDCA so it can be read as JSON file" class="potts.tools.BMA2JSON" args=""/>
 <packageapp description="DCASequenceSimulator" class="potts.dca.DCASequenceSimulator" args=""/>
 <packageapp description="MutualInformation of alignment output as SVG heatmap" class="potts.tools.MutualInformation" args=""/>
             
@@ -21,7 +22,8 @@
                 <provider classname="potts.likelihood.TreeLikelihoodWithRootStates"/>
                 <provider classname="potts.likelihood.PottsSequenceLikelihood"/>
                 <provider classname="potts.mbp.MBPPrior"/>
-                <provider classname="potts.mbp.RootSequenceResampler"/>
+                <provider classname="potts.mbp.MBPRootSequenceResampler"/>
+                <provider classname="potts.mbp.MBPSimulatedAlignment"/>
                 
                 <provider classname="potts.operator.RootSequenceResampler"/>
                 <provider classname="potts.operator.RootHeightAndSequenceResampler"/>

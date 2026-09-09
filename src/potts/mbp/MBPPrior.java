@@ -170,19 +170,19 @@ public class MBPPrior extends Distribution {
         return logP;
 	}
 	
-	public double logP(int site1, int site2) {
+	public double logP(int state1, int state2) {
 		double logP = 0;
 		// frequencies contribution
-		if (site1 >= 0 & site1 <= 20) {
-			logP += logFreqs[site1];
+		if (state1 >= 0 & state1 <= 20) {
+			logP += logFreqs[state1];
 		}
-		if (site2 >= 0 & site2 <= 20) {
-			logP += logFreqs[site2];
+		if (state2 >= 0 & state2 <= 20) {
+			logP += logFreqs[state2];
 		}
 		
 		// base pair matching contribution
-		if (site1 >=0 && site1 <= 20 && site2 >= 0 && site2 <= 20) {
-			logP += match[site1][site2] * logPmatch + (1 - match[site1][site2]) * logPmiss;
+		if (state1 >=0 && state1 <= 20 && state2 >= 0 && state2 <= 20) {
+			logP += match[state1][state2] * logPmatch + (1 - match[state1][state2]) * logPmiss;
 		}
 		return logP;
 	}
