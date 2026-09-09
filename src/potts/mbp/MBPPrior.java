@@ -18,9 +18,9 @@ import beast.base.inference.parameter.IntegerParameter;
 @Description("Middle base pair prior: takes 2 amino acide sequences as input and for every "
 		+ "site contribute p for paired and 1-p for unpaired")
 public class MBPPrior extends Distribution {
-	final public Input<IntegerParameter> sequence1Input = new Input<>("seq1", 
+	final public Input<IntegerParameter> sequence1Input = new Input<>("sequence1", 
 			  "specifies site specific sequence", Validate.REQUIRED);
-	final public Input<IntegerParameter> sequence2Input = new Input<>("seq2", 
+	final public Input<IntegerParameter> sequence2Input = new Input<>("sequence2", 
 			  "specifies site specific sequence to pair agains", Validate.REQUIRED);
 	final public Input<Boolean> reverseInput = new Input<>("reverse", "whether to reverse the second sequence (default) or keep it in order", true);
 	final public Input<Double> pInput = new Input<>("p", "probability of basepair matching for a single site", 0.99);
@@ -40,17 +40,20 @@ public class MBPPrior extends Distribution {
 	double [][] match;
 	
 	double [] logFreqs;
+	
+	boolean reverse;
 
 	@Override
 	public void initAndValidate() {
 		super.initAndValidate();
 		
+		reverse = reverseInput.get();
 		substModel = substModelInput.get();
 		
 		sequence1 = sequence1Input.get();
 		sequence2 = sequence2Input.get();
 		
-		if (sequence1.getUpper() < 20 || sequence2.getUpper() < 20) {
+		if (sequence1.getUpper() < 19 || sequence2.getUpper() < 19) {
 			throw new IllegalArgumentException("Expected amino acid sequences");
 		}
 		
@@ -146,9 +149,10 @@ public class MBPPrior extends Distribution {
 			logFreqs[i] = Math.log(freqs[i]);
 		}
 		
-		for (int i = 0; i < sequence1.getDimension(); i++) {
+		int n = sequence1.getDimension();
+		for (int i = 0; i < n; i++) {
 			int site1 = sequence1.getValue(i);
-			int site2 = sequence2.getValue(i);
+			int site2 = sequence2.getValue(reverse ? n - i - 1: i);
 			
 			// frequencies contribution
 			if (site1 >= 0 & site1 <= 20) {

@@ -3,9 +3,8 @@ package potts.mbp;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Input.Validate;
-import beast.base.inference.Distribution;
+import beast.base.evolution.alignment.Alignment;
 import beast.base.inference.Operator;
-import beast.base.inference.State;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.util.Randomizer;
 import potts.likelihood.TreeLikelihoodWithRootStates;
@@ -25,35 +24,32 @@ public class RootSequenceResampler extends Operator {
 	final public Input<MBPPrior> mbpPriorInput = new Input<>("mbpPrior", 
 			"Middle base pair prior", Validate.REQUIRED);
 
-	final public Input<State> stateInput = new Input<>("state", "elements of the state space", Validate.REQUIRED);
-
-    final public Input<Distribution> posteriorInput =
-            new Input<>("posterior", "probability distribution to sample over (e.g. a posterior)",
-                    Input.Validate.REQUIRED);
-
 	IntegerParameter sequence1, sequence2;
 	TreeLikelihoodWithRootStates likelihood1, likelihood2;
+	Alignment data1, data2;
 	MBPPrior mbpPrior;
-	Distribution posterior;
 	
 	int stateCount = 20;
-	State state;
 	
 	@Override
 	public void initAndValidate() {
-		state = stateInput.get();
-		posterior = posteriorInput.get();
 		
 		sequence1 = sequence1Input.get();
 		sequence2 = sequence2Input.get();
 		
 		likelihood1 = likelihood1Input.get();
 		likelihood2 = likelihood2Input.get();
+		
+		data1 = likelihood1.dataInput.get();
+		data2 = likelihood2.dataInput.get();
+		
 		mbpPrior = mbpPriorInput.get();
 	}
 
 	@Override
 	public double proposal() {
+		boolean reverse = mbpPrior.reverseInput.get();
+		
 		int n = sequence1.getValues().length;
 		
 		double [][] logProbs = new double[n][stateCount*stateCount];
@@ -61,29 +57,25 @@ public class RootSequenceResampler extends Operator {
 
 		double logHR = 0;
 
-		for (int i = 0; i < 20; i++) {
-			for (int j = 0; j < 20; j++) {
-				state.store(-1);
-	            state.storeCalculationNodes();
-	            state.checkCalculationNodesDirtiness();
-				for (int k = 0; k < n; k++) {
-					sequence1.setValue(k, i);
-					sequence2.setValue(k, j);
-				}
-				posterior.calculateLogP();
-				
-				double [] rootPartials1 = likelihood1.getRootPartials();
-				double [] rootPartials2 = likelihood2.getRootPartials();
+		double [] rootPartials1 = likelihood1.getRootPartials();
+		double [] rootPartials2 = likelihood2.getRootPartials();
 
+		for (int i = 0; i < 20; i++) {
+
+	        for (int j = 0; j < 20; j++) {
 				
-				for (int k = 0; k < n; k++) {
-					logProbs[k][i*stateCount+j] = rootPartials1[k] + rootPartials2[k] 
-							+ mbpPrior.logP(i,j);
+		        for (int k = 0; k < n; k++) {
+			        int patternIndexOffset1 = data1.getPatternIndex(k) * stateCount;
+			        int patternIndexOffset2 = data2.getPatternIndex(reverse ? n - k - 1: k) * stateCount;
+					double logP = 
+							Math.log(rootPartials1[patternIndexOffset1 + i]) +
+							Math.log(rootPartials2[patternIndexOffset2 + j]) +
+							mbpPrior.logP(i, j);
+					if (Double.isNaN(logP)) {
+						logP = Double.NEGATIVE_INFINITY;
+					}
+					logProbs[k][i*stateCount + j] = logP;
 				}
-				
-                state.restore();
-                state.restoreCalculationNodes();
-                state.setEverythingDirty(false);
 			}
 		}
 		
@@ -107,8 +99,10 @@ public class RootSequenceResampler extends Operator {
 			for (int k = 0; k < probs.length; k++) {
 				probs[k] = Math.exp(probs[k] - max);
 			}
-			int newState = Randomizer.randomChoicePDF(probs);
-			seq[i] = newState;
+			if (!Double.isNaN(probs[0])) {
+				int newState = Randomizer.randomChoicePDF(probs);
+				seq[i] = newState;
+			}
 		}
 		
 		
@@ -117,6 +111,7 @@ public class RootSequenceResampler extends Operator {
 			sequence2.setValue(i, seq[i] % stateCount);
 		}
 		
+		logHR = Double.POSITIVE_INFINITY;
 		return logHR;
 	}
 	
