@@ -20,6 +20,8 @@
 
                 <provider classname="potts.likelihood.TreeLikelihoodWithRootStates"/>
                 <provider classname="potts.likelihood.PottsSequenceLikelihood"/>
+                <provider classname="potts.mbp.MBPPrior"/>
+                <provider classname="potts.mbp.RootSequenceResampler"/>
                 
                 <provider classname="potts.operator.RootSequenceResampler"/>
                 <provider classname="potts.operator.RootHeightAndSequenceResampler"/>
