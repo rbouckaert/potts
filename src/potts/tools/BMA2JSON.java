@@ -2,11 +2,14 @@ package potts.tools;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import beast.base.core.Description;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 
-/** convert file produced by github.com/anna-pa-m/adabmDCA so it can be read as JSON file **/
+@Description("convert file produced by github.com/anna-pa-m/adabmDCA so it can be read as JSON file")
 public class BMA2JSON {
 
 	public static void main(String[] args) {

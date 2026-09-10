@@ -123,6 +123,7 @@ public class MBPRootSequenceResampler extends Operator {
 		}
 		
 		logHR = Double.POSITIVE_INFINITY;
+		//logHR = 0;
 		return logHR;
 	}
 	

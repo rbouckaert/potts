@@ -95,7 +95,7 @@ public class MBPSimulatedAlignment extends SimulatedAlignment implements StateNo
 
         int[] seq = new int[m_sequenceLength];
         for (int i = 0; i < m_sequenceLength; i++) {
-            seq[i] = firstSeq ? sequence1.getValue(i) : sequence2.getValue(reverse ? m_sequenceLength-i-1: i);
+            seq[i] = firstSeq ? sequence1.getValue(i) : sequence2.getValue(i);
         }
 
         traverse(root, seq, category);
