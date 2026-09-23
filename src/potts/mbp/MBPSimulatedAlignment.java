@@ -1,5 +1,8 @@
 package potts.mbp;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 
 import beast.base.core.Description;
@@ -22,6 +25,8 @@ public class MBPSimulatedAlignment extends SimulatedAlignment implements StateNo
 	final public Input<Alignment> otherInput = new Input<>("other", "the second alignment to be simulated", Validate.REQUIRED);
 
 	final public Input<Tree> tree2Input = new Input<>("tree2", "phylogenetic beast.tree with sequence data in the leafs", Validate.REQUIRED);
+
+	final public Input<File> rootSeqFileInput = new Input<>("rootSeqFile", "file to store simulated root sequences in tsv format");
 
 	private IntegerParameter sequence1, sequence2;
 	private boolean firstSeq, reverse; 
@@ -58,6 +63,23 @@ public class MBPSimulatedAlignment extends SimulatedAlignment implements StateNo
 			sequence2.setValue(reverse ? n - i - 1 : i, state2);
 		}
 		
+		if (rootSeqFileInput.get() != null) {
+			try {
+				PrintStream out = new PrintStream(rootSeqFileInput.get());
+				for (int i = 0; i < sequence1.getDimension(); i++) {
+					out.print(sequence1.getValue(i));
+					out.print("\t");
+				}
+				for (int i = 0; i < sequence2.getDimension(); i++) {
+					out.print(sequence2.getValue(i));
+					out.print("\t");
+				}
+				out.println();
+				out.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 
 		// simulate the other alignment first
 		Tree tree = m_treeInput.get();
