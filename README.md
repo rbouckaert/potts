@@ -1,8 +1,9 @@
 ## [BEAST 2](http://beast2.org) package for the PhyloPotts model
 
-## Install through BEAUti
 
 # Installing the package
+
+## Install through BEAUti
 
 PhyloPotts is a [BEAST2](http://beast2.org) package that requires BEAST 2 v2.7.
 If you have not already done so, you can get BEAST 2 from [here](http://beast2.org).
