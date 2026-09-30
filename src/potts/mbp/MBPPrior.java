@@ -37,7 +37,7 @@ public class MBPPrior extends Distribution {
 	double logPmatch, logPmiss;
 
 	// 20x20 matrix to score how well two amino acid characters have a middle base pair in common
-	double [][] match;
+	public double [][] match;
 	
 	double [] logFreqs;
 	
@@ -99,8 +99,8 @@ public class MBPPrior extends Distribution {
 		Aminoacid aminoacid = new Aminoacid();
 		match = new double[20][20];
 		for (int i = 0; i < 20; i++) {
-			String c1 = aminoacid.getCharacter(i);
 			for (int j = 0; j < 20; j++) {
+				String c1 = aminoacid.getCharacter(i);
 				String c2 = aminoacid.getCharacter(j);
 				if (c1.equals("S") || c2.equals("S")) {
 					if (!c1.equals("S")) {
@@ -109,10 +109,10 @@ public class MBPPrior extends Distribution {
 						c2 = tmp;
 					}
 					if (!c2.equals("S")) {
-						if (c2.equals("C")) {
+						String mbp2 = mapAA2N.get(c2);
+						if (mbp2.equals("C")) {
 							match[i][j] = 1.0/3.0;
-						}
-						if (c2.equals("G")) {
+						} else if (mbp2.equals("G")) {
 							match[i][j] = 2.0/3.0;
 						}
 					} else {

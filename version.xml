@@ -21,6 +21,7 @@
 
                 <provider classname="potts.likelihood.TreeLikelihoodWithRootStates"/>
                 <provider classname="potts.likelihood.PottsSequenceLikelihood"/>
+                <provider classname="potts.mbp.BPPrior"/>
                 <provider classname="potts.mbp.MBPPrior"/>
                 <provider classname="potts.mbp.MBPRootSequenceResampler"/>
                 <provider classname="potts.mbp.MBPSimulatedAlignment"/>
