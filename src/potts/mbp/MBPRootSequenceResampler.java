@@ -1,5 +1,9 @@
 package potts.mbp;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Input.Validate;
@@ -7,6 +11,7 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.inference.Operator;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.util.Randomizer;
+import potts.likelihood.PottsSequenceLikelihood;
 import potts.likelihood.TreeLikelihoodWithRootStates;
 
 @Description("Gibbs sampler for root sequence in TreeLikelihoodWithRootStates")
@@ -23,7 +28,7 @@ public class MBPRootSequenceResampler extends Operator {
 			"TreeLikelihood With Root States to provide root partials 2", Validate.REQUIRED);
 	final public Input<MBPPrior> mbpPriorInput = new Input<>("mbpPrior", 
 			"Middle base pair prior", Validate.REQUIRED);
-
+	
 	IntegerParameter sequence1, sequence2;
 	TreeLikelihoodWithRootStates likelihood1, likelihood2;
 	Alignment data1, data2;
@@ -68,8 +73,10 @@ public class MBPRootSequenceResampler extends Operator {
 
 		double logHR = 0;
 
-		double [] rootPartials1 = likelihood1.getRootPartials();
-		double [] rootPartials2 = likelihood2.getRootPartials();
+		double [] rootPartials1;
+		double [] rootPartials2;
+		rootPartials1 = likelihood1.getRootPartials();
+		rootPartials2 = likelihood2.getRootPartials();
 
 		for (int i = 0; i < 20; i++) {
 

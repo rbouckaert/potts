@@ -25,6 +25,8 @@
                 <provider classname="potts.mbp.MBPPrior"/>
                 <provider classname="potts.mbp.MBPRootSequenceResampler"/>
                 <provider classname="potts.mbp.MBPSimulatedAlignment"/>
+                <provider classname="potts.mbp.MBPPottsRootSequenceResampler"/>
+                <provider classname="potts.mbp.MBPPottsSimulatedAlignment"/>
                 
                 <provider classname="potts.operator.RootSequenceResampler"/>
                 <provider classname="potts.operator.RootHeightAndSequenceResampler"/>

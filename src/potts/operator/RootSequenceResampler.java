@@ -13,7 +13,7 @@ import potts.dca.DCASequenceSimulator;
 import potts.likelihood.PottsSequenceLikelihood;
 import potts.likelihood.TreeLikelihoodWithRootStates;
 
-@Description("Gibbs sampler for root sequence in TreeLikelihoodWithRootStates")
+@Description("Sampler for root sequence in TreeLikelihoodWithRootStates")
 public class RootSequenceResampler extends Operator {
 
 	final public Input<PottsSequenceLikelihood> pottsSeqLikelihoodInput = new Input<>("pottsSeqLikelihood", "DCA json file previously trained on an alignment",

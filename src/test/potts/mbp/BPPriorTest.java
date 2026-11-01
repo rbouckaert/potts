@@ -1,8 +1,9 @@
 package test.potts.mbp;
 
+import java.util.Arrays;
+
 import beast.base.evolution.substitutionmodel.WAG;
 import beast.base.inference.parameter.IntegerParameter;
-import cern.colt.Arrays;
 import potts.mbp.BPPrior;
 import potts.mbp.MBPPrior;
 

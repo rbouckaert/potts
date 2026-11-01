@@ -11,9 +11,9 @@ import beast.base.core.Description;
 
 @Description("Base class for representing a direct-coupling analysis (DCA)")
 public class DCA extends BEASTObject {
-    protected int stateCount;    // Number of states (e.g., 21 for Amino Acids)
-	protected int siteCount;     // Length of sequence
-    protected int sequenceCount; // Number of sequences in MSA
+    public int stateCount;    // Number of states (e.g., 21 for Amino Acids)
+    public int siteCount;     // Length of sequence
+    public int sequenceCount; // Number of sequences in MSA
 
     
 	@Override
@@ -34,10 +34,10 @@ public class DCA extends BEASTObject {
 
     // --- Parameters to Learn ---
     // h[i][a] : Field for site i, state a
-    protected double [][] h; 
+	public double [][] h; 
     // J[i][j][a][b] : Coupling for site i (state a) and site j (state b)
     // Note: We only utilise entries where i < j to save redundant math
-    protected double [][][][] J;
+	public double [][][][] J;
     
     
     public double [][] getH() {return h;}

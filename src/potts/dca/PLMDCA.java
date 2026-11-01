@@ -196,7 +196,8 @@ public class PLMDCA extends DCA {
         this.J[site] = local_J;
         
         // Progress indicator
-        if (site % 10 == 0) System.out.print(".");
+        
+        if (site % 10 == 0) {System.out.print("|");} else {System.out.print(".");}
     }
 
     /**
@@ -332,7 +333,7 @@ public class PLMDCA extends DCA {
         
         // Train
         // 100 iterations, Learning Rate 0.1
-        plm.train(100, 0.1); 
+        plm.train(1000, 0.1); 
 
         
         if (args.length > 1) {
