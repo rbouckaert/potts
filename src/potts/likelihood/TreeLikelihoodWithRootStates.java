@@ -342,6 +342,9 @@ public class TreeLikelihoodWithRootStates extends beast.base.evolution.likelihoo
                 double sum = 0.0;
                 int i = data.getPatternIndex(k);
                 int state = rootFrequenciesStates[k];
+                if (stateCount * i + state >= partials.length) {
+                	throw new RuntimeException("index out of range");
+                }
                 // sum += partials[stateCount * i + state] * rootFrequenciesx[state];
                 sum += partials[stateCount * i + state];
                 outLogLikelihoods[k] = Math.log(sum) + getLikelihoodCore().getLogScalingFactor(i);

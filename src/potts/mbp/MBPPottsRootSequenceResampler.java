@@ -24,7 +24,7 @@ public class MBPPottsRootSequenceResampler extends MBPRootSequenceResampler {
 
 	PottsSequenceLikelihood pottsLikelihood1, pottsLikelihood2;
 	DCA dca1, dca2;
-	int totalStepCount, stateCount;
+	int totalStepCount;
 	double temperaturFactor;
 	
 	@Override

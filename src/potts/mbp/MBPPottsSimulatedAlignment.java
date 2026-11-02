@@ -125,6 +125,11 @@ public class MBPPottsSimulatedAlignment extends SimulatedAlignment implements St
 		seqs1.clear();
 		seqs1.addAll(this.sequences);
 		first.initAndValidate();
+		
+		
+		likelihood1Input.get().initAndValidate();
+		likelihood2Input.get().initAndValidate();
+
 	}
 	
     private void resample(PottsSequenceLikelihood pottsSequenceLikelihood1,
